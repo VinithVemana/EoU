@@ -1,61 +1,36 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Project-level guidance for Claude Code. Per-folder CLAUDE.md files own locality-specific detail — read those when editing inside the folder.
 
 ## Project Overview
 
-`claim_url` is a Python package that finds official-source URLs evidencing patent-claim limitations for a given product. The previous monolithic `claim_url.py` (~2000 lines) has been refactored into a `src/`-layout package with isolated, testable components.
+`claim_url` is a Python package that finds official-source URLs evidencing patent-claim limitations for a given product. The previous monolithic `claim_url.py` (~2000 lines) was refactored into a `src/`-layout package with isolated, testable components.
 
 ### Pipeline (six stages)
 
-1. **Agent 1 (`agents/domain.py::DomainIdentificationAgent`)** — uses SerpApi probe queries (`{product} official website`, `... official support`, ...) to gather evidence, then asks the LLM to classify which domains are vendor-owned/official. Replaces any hardcoded product→domain map.
-2. **`agents/extractor.py::ClaimElementExtractor`** — LLM decomposes the claim into 4–8 discrete `ClaimElement`s (id, label, keywords). Deterministic extractor, not an autonomous agent.
-3. **`agents/rewriter.py::QueryRewriteAgent`** — translates patent jargon ("incremental keystrokes", "build string", "error model") into product user-facing vocabulary ("search suggestions", "autocomplete", "recommendations"). Generates `--queries-per-element` queries per element (default 3). Without this step narrow `site:domain` searches mostly return empty. Falls back to keyword-only query on failure.
-4. **`agents/search.py::OfficialDomainSearch`** — for each (rewritten query, domain) pair, runs SerpApi `<query> site:<domain>`. Identical (query, domain) pairs share a single SerpApi call via an in-method cache. Hits filtered to URLs whose normalized domain matches the target (or is a sub/parent of it). Optional `--exclude-url-patterns` regex blocklist drops obvious non-doc paths.
-5. **`fetch.py::PageFetcher`** *(optional, `--fetch-pages`)* — fetches each unique candidate URL via a shared `requests.Session` in a `ThreadPoolExecutor` (default 8 workers), strips HTML via regex, hands ~4000 chars of body text to Agent 2. Cached by URL.
-6. **Agent 2 (`agents/relevance.py::RelevanceCheckingAgent`)** — receives the full claim text *and* the decomposed elements, batches candidate hits (default 35 per batch) and scores each URL 0.0–1.0. Recall-first prompt; borderline → 0.25 not 0.0. Dedupe across batches keeps highest score; tied scores merge `matched_elements` and concatenate rationales.
-7. **`finder.py::ClaimURLFinder.run`** orchestrates the six stages and returns a `FinderResult` dataclass.
+1. **Agent 1** (`agents/domain.py::DomainIdentificationAgent`) — discover vendor/official domains via SerpApi probes + LLM classification.
+2. **Extractor** (`agents/extractor.py::ClaimElementExtractor`) — decompose claim into 4–8 `ClaimElement`s.
+3. **Rewriter** (`agents/rewriter.py::QueryRewriteAgent`) — translate patent jargon → product user-facing vocabulary.
+4. **Search** (`agents/search.py::OfficialDomainSearch`) — `<query> site:<domain>` per (rewritten query, domain) pair.
+5. **Page fetch** (`fetch.py::PageFetcher`, optional `--fetch-pages`) — parallel HTTP fetch + HTML strip → ~4000 chars body to Agent 2.
+6. **Agent 2** (`agents/relevance.py::RelevanceCheckingAgent`) — score each URL 0.0–1.0 against the full claim text + decomposed elements.
 
-All LLM calls go through `llm.LLMClient`, which abstracts OpenAI / Anthropic Claude / Google Gemini behind a single `complete(system, prompt, ..., json_mode)` method with retry+backoff (jittered exponential). JSON outputs are parsed with `utils.parse_json_object` (handles markdown fences and prose-wrapped JSON).
+`finder.py::ClaimURLFinder.run` orchestrates the six stages and returns a `FinderResult`.
 
-### Layout
+All LLM calls go through `llm.LLMClient` — abstracts OpenAI / Anthropic / Google behind a single `complete(...)` with retry+backoff (jittered exponential). JSON outputs parsed via `utils.parse_json_object` (handles markdown fences, prose-wrapped JSON).
 
-```
-src/claim_url/
-  __init__.py            # public API (LLMClient, ClaimURLFinder, models, ...)
-  __main__.py            # python -m claim_url
-  cli.py                 # argparse + main()
-  config.py              # provider enum, default models, env-var names
-  errors.py              # ClaimURLError / ConfigError / LLMError / SearchError
-  models.py              # ClaimElement, DomainCandidate, RawHit, ScoredURL, FinderResult
-  utils.py               # normalize_domain, parse_json_object, dedupe, chunked, domain_matches
-  logging_setup.py       # configure_logging() — called only by CLI, never by lib import
-  _progress.py           # tqdm shim (no-op fallback)
-  serp.py                # SerpApiClient with bounded retries
-  fetch.py               # PageFetcher: Session pool + parallel fetch_many()
-  llm/
-    __init__.py
-    base.py              # LLMClient facade (retries, jitter)
-    openai_provider.py
-    claude_provider.py
-    google_provider.py
-  agents/
-    __init__.py
-    domain.py            # Agent 1
-    extractor.py
-    rewriter.py
-    search.py            # OfficialDomainSearch + SearchSummary
-    relevance.py         # Agent 2
-  finder.py              # ClaimURLFinder orchestrator
-tests/                   # pytest, mocked LLM + Serp
-pyproject.toml           # src-layout, console_scripts: claim-url
-requirements.txt
-requirements-dev.txt
-```
+### Where to look
+
+| Folder | What lives there | Read when |
+|---|---|---|
+| [src/claim_url/](src/claim_url/CLAUDE.md) | top-level modules: cli, config, errors, models, utils, finder, fetch, serp, logging | editing CLI, orchestrator, shared utils, HTTP/SerpApi clients |
+| [src/claim_url/agents/](src/claim_url/agents/CLAUDE.md) | the six pipeline agents | editing pipeline stages, search budget, prompt design |
+| [src/claim_url/llm/](src/claim_url/llm/CLAUDE.md) | LLMClient + per-provider adapters | adding a provider, debugging param-compat issues |
+| [tests/](tests/CLAUDE.md) | pytest, mocked LLM + Serp | adding/modifying tests |
 
 ## Common commands
 
-Always use the global venv (`/Users/vinith_macbook_pro/Desktop/python3/venv314/bin/python`) — see global `CLAUDE.md`.
+Always use the global venv (`/Users/vinith_macbook_pro/Desktop/python3/venv314/bin/python`) — see global `~/.claude/CLAUDE.md`.
 
 ```bash
 PY=/Users/vinith_macbook_pro/Desktop/python3/venv314/bin/python
@@ -112,19 +87,6 @@ $PY -m pytest --cov=claim_url --cov-report=term-missing
 - `GOOGLE_API_KEY` — required when `--llm google`.
 
 ⚠️ **Env var name mismatch:** local `.env` may define `SERP_API_KEY` but the package reads `SERPAPI_API_KEY`. The CLI auto-loads `.env` via `python-dotenv`, but the variable name still has to match. Either rename in `.env` to `SERPAPI_API_KEY` or `export SERPAPI_API_KEY=$SERP_API_KEY` before running.
-
-## Architecture notes
-
-- **Side-effect-free import.** `import claim_url` does NOT load `.env` and does NOT configure logging. Both happen only inside `cli.main()` so library consumers retain control.
-- **Strict domain filtering** in `OfficialDomainSearch._filter_results` (delegating to `utils.domain_matches`): a hit is accepted only if its normalized domain equals the target, is a subdomain of it, or is the parent of it.
-- **Search budget**: SerpApi calls per run ≈ `len(DOMAIN_PROBE_QUERIES)` (Agent 1 probes, currently 5) + `len(domains) * len(elements) * queries_per_element` minus duplicate (query, domain) pairs eliminated by the in-method cache. Default 3-query rewrite × 8 elements × 3 domains ≈ 72 calls. Watch quota when raising `--max-domains`, `--queries-per-element`, or claim length.
-- **Query rewriting is load-bearing for recall**: without `QueryRewriteAgent`, raw patent vocabulary returns near-zero hits on narrow `site:` searches. The rewrite closes the patent-ese vs product-ese vocabulary gap.
-- **Page-fetch is load-bearing for precision**: SerpApi snippets are short SEO blurbs. Pages whose body describes the feature (e.g. `support.google.com/youtubetv/answer/7271625` — "Recommendations on YouTube TV") were scored 0.0 from snippet alone but 0.95 with `--fetch-pages`. Use `--fetch-pages` for production charting; latency cost is N HTTP requests parallelized over `--fetch-workers` (default 8).
-- **Agent 2 receives the full claim text**, not just the decomposed elements. The decomposition loses context; the full claim lets the model make associative jumps ("recommendations" ↔ "presenting most likely items") that the strict per-element rubric otherwise rejects.
-- **Provider param compatibility**: `OpenAIProvider` picks `max_completion_tokens` for `gpt-5.x` / `o1` / `o3` / `o4` reasoning models and `max_tokens` for legacy chat models, with a one-shot retry if the API rejects the chosen kwarg. `GoogleProvider` uses `response_mime_type="application/json"` for JSON mode. `ClaudeProvider` has no JSON mode here — it relies on prompt instructions + `parse_json_object` fallback.
-- **Lazy SDK imports.** Each provider imports its SDK only on construction; installing only one of `openai` / `anthropic` / `google-genai` is sufficient.
-- **Dedupe semantics** in `RelevanceCheckingAgent._dedupe`: same URL across multiple batches → higher score wins; tied scores merge `matched_elements` and concatenate rationales.
-- **Logger name** is `"claim-url-finder"`. Handlers attached only by `logging_setup.configure_logging()`.
 
 ## Public API surface
 
