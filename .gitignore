@@ -30,5 +30,13 @@ build/
 dist/
 *.egg-info/
 
+# Test / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+
 # Claude Code / project caches
 .claude/

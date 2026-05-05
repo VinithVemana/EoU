@@ -1,0 +1,11 @@
+# Runtime dependencies for claim_url. Install via:
+#   /Users/vinith_macbook_pro/Desktop/python3/venv314/bin/python -m pip install -r requirements.txt
+google-search-results>=2.4.2
+requests>=2.31
+tqdm>=4.66
+python-dotenv>=1.0
+
+# LLM SDKs — only the one matching --llm is strictly required.
+openai>=1.30
+anthropic>=0.30
+google-genai>=0.3
