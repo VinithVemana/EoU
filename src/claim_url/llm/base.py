@@ -9,6 +9,7 @@ from typing import Optional, Protocol
 
 from claim_url.config import LLMProvider
 from claim_url.errors import ConfigError, LLMError
+from claim_url.pricing import UsageStats, lookup_pricing
 
 
 LOG = logging.getLogger("claim-url-finder")
@@ -18,6 +19,7 @@ class _Provider(Protocol):
     """Internal provider interface — one concrete impl per backend."""
 
     model: str
+    last_usage: tuple[int, int]
 
     def complete(
         self,
@@ -51,6 +53,8 @@ class LLMClient:
     ) -> None:
         self.provider = LLMProvider(provider)
         self._provider_impl: _Provider = self._make_provider(self.provider, model, api_key)
+        self.usage = UsageStats()
+        self._pricing = lookup_pricing(self._provider_impl.model)
 
     @property
     def model(self) -> str:
@@ -97,13 +101,22 @@ class LLMClient:
         last_error: Optional[BaseException] = None
         for attempt in range(1, retries + 1):
             try:
-                return self._provider_impl.complete(
+                text = self._provider_impl.complete(
                     system=system,
                     prompt=prompt,
                     max_tokens=max_tokens,
                     temperature=temperature,
                     json_mode=json_mode,
                 )
+                prompt_toks, completion_toks = getattr(
+                    self._provider_impl, "last_usage", (0, 0)
+                )
+                self.usage.record(
+                    prompt=prompt_toks,
+                    completion=completion_toks,
+                    pricing=self._pricing,
+                )
+                return text
             except Exception as exc:
                 last_error = exc
                 LOG.warning(

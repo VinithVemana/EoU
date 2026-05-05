@@ -253,6 +253,36 @@ def _print_text_result(result: FinderResult, *, stream=sys.stdout) -> None:
         out("\n")
 
 
+def _print_pricing_summary(llm: LLMClient, elapsed: float, *, stream=sys.stdout) -> None:
+    """Append model + token + cost summary to stdout and the log."""
+    usage = llm.usage
+    cost_str = (
+        f"${usage.cost_usd:.4f}" if usage.cost_usd is not None else "n/a (model not in pricing table)"
+    )
+
+    out = stream.write
+    out("\n=== Run summary ===\n")
+    out(f"  provider:          {llm.provider.value}\n")
+    out(f"  model:             {llm.model}\n")
+    out(f"  llm calls:         {usage.calls}\n")
+    out(f"  prompt tokens:     {usage.prompt_tokens:,}\n")
+    out(f"  completion tokens: {usage.completion_tokens:,}\n")
+    out(f"  total tokens:      {usage.total_tokens:,}\n")
+    out(f"  estimated cost:    {cost_str}\n")
+    out(f"  elapsed:           {elapsed:.1f}s\n")
+
+    LOG.info(
+        "Pricing summary: provider=%s model=%s calls=%d prompt=%d completion=%d total=%d cost=%s",
+        llm.provider.value,
+        llm.model,
+        usage.calls,
+        usage.prompt_tokens,
+        usage.completion_tokens,
+        usage.total_tokens,
+        cost_str,
+    )
+
+
 def _load_dotenv_if_available() -> None:
     """Load ``.env`` from CWD or parents — only when invoked via the CLI."""
     try:
@@ -330,6 +360,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             len(result.urls),
             elapsed,
         )
+        _print_pricing_summary(llm, elapsed)
         return 0
 
     except KeyboardInterrupt:

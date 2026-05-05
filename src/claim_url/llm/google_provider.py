@@ -12,6 +12,7 @@ from claim_url.errors import ConfigError
 class GoogleProvider:
     def __init__(self, *, model: Optional[str], api_key: Optional[str]) -> None:
         self.model = model or DEFAULT_GOOGLE_MODEL
+        self.last_usage: tuple[int, int] = (0, 0)
         api_key = api_key or os.getenv(ENV_GOOGLE_KEY)
         if not api_key:
             raise ConfigError(f"{ENV_GOOGLE_KEY} is required for --llm google")
@@ -43,6 +44,12 @@ class GoogleProvider:
             model=self.model,
             contents=f"{system}\n\n{prompt}",
             config=config,
+        )
+
+        meta = getattr(response, "usage_metadata", None)
+        self.last_usage = (
+            int(getattr(meta, "prompt_token_count", 0) or 0),
+            int(getattr(meta, "candidates_token_count", 0) or 0),
         )
         return response.text or ""
 

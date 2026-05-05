@@ -23,6 +23,7 @@ def _uses_max_completion_tokens(model: str) -> bool:
 class OpenAIProvider:
     def __init__(self, *, model: Optional[str], api_key: Optional[str]) -> None:
         self.model = model or DEFAULT_OPENAI_MODEL
+        self.last_usage: tuple[int, int] = (0, 0)
         api_key = api_key or os.getenv(ENV_OPENAI_KEY)
         if not api_key:
             raise ConfigError(f"{ENV_OPENAI_KEY} is required for --llm openai")
@@ -70,6 +71,11 @@ class OpenAIProvider:
             else:
                 raise
 
+        usage = getattr(response, "usage", None)
+        self.last_usage = (
+            int(getattr(usage, "prompt_tokens", 0) or 0),
+            int(getattr(usage, "completion_tokens", 0) or 0),
+        )
         return response.choices[0].message.content or ""
 
 
