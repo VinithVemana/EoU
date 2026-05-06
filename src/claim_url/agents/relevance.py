@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Optional
+from typing import Any
 
 from claim_url._progress import progress
 from claim_url.llm import LLMClient
@@ -35,17 +35,6 @@ Return valid JSON only.
 """
 
 
-_SPEC_CONTEXT_BLOCK = """\
-
-Patent description context (concrete implementation vocabulary — use this to
-disambiguate the claim's technical domain. For example, if the spec describes
-a vehicle dispatch system, a "location system" in the claim refers to fleet
-vehicle tracking — NOT a browser/device geolocation API):
-\"\"\"
-{spec_context}
-\"\"\"
-"""
-
 PROMPT_TEMPLATE = """\
 Product:
 {product}
@@ -54,7 +43,7 @@ Full patent claim (canonical source of truth — use this for associative semant
 \"\"\"
 {claim}
 \"\"\"
-{spec_context_section}
+
 Claim elements (decomposed limitations; ids are stable):
 {elements_json}
 
@@ -117,7 +106,6 @@ class RelevanceCheckingAgent:
         claim: str,
         elements: list[ClaimElement],
         hits: list[RawHit],
-        spec_context: Optional[str] = None,
     ) -> list[ScoredURL]:
         if not hits:
             return []
@@ -126,11 +114,6 @@ class RelevanceCheckingAgent:
         elements_payload = [
             {"id": e.id, "label": e.label, "keywords": e.keywords} for e in elements
         ]
-        spec_section = (
-            _SPEC_CONTEXT_BLOCK.format(spec_context=spec_context.strip())
-            if spec_context and spec_context.strip()
-            else ""
-        )
 
         all_scored: list[ScoredURL] = []
         batches = list(chunked(candidates, self.max_candidates_per_batch))
@@ -141,7 +124,6 @@ class RelevanceCheckingAgent:
                 claim=claim,
                 elements_payload=elements_payload,
                 batch=batch,
-                spec_section=spec_section,
             )
 
         bar = progress(total=len(batches), desc="Agent2 scoring", unit="batch")
@@ -191,12 +173,10 @@ class RelevanceCheckingAgent:
         claim: str,
         elements_payload: list[dict[str, Any]],
         batch: list[dict[str, Any]],
-        spec_section: str = "",
     ) -> list[Any]:
         prompt = PROMPT_TEMPLATE.format(
             product=product,
             claim=claim.strip(),
-            spec_context_section=spec_section,
             elements_json=json.dumps(elements_payload, indent=2),
             candidates_json=json.dumps(batch, indent=2),
         )
