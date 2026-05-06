@@ -371,9 +371,9 @@ def load_claim_from_patent(
     if not pn:
         raise gr.Error("Enter a patent number first.")
 
-    api_key = pcs_api_key.strip() or os.environ.get(ENV_PCS_API_KEY, "")
-    base_url = pcs_base_url.strip() or os.environ.get(ENV_PCS_BASE_URL, "")
-    port = pcs_port.strip() or os.environ.get(ENV_PCS_PORT, "")
+    api_key = _text(pcs_api_key).strip() or os.environ.get(ENV_PCS_API_KEY, "")
+    base_url = _text(pcs_base_url).strip() or os.environ.get(ENV_PCS_BASE_URL, "")
+    port = _text(pcs_port).strip() or os.environ.get(ENV_PCS_PORT, "")
 
     missing = [name for name, val in [(ENV_PCS_API_KEY, api_key), (ENV_PCS_BASE_URL, base_url)] if not val]
     if missing:
