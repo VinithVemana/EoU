@@ -75,8 +75,9 @@ Scoring:
 Rules:
 - When body text is present, weight it more heavily than the snippet — snippets are often generic SEO blurbs that understate relevance.
 - Be associative, not literal. The claim uses patent jargon ("incremental keystrokes", "error model", "build string", "alphanumeric symbols"); product docs use feature names ("search", "autocomplete", "recommendations", "voice search", "library", "guide", "lineup"). These are the same thing.
-- Use the patent description context (if provided) to determine the TECHNICAL DOMAIN of the claim. Score candidates that fit that domain higher than candidates that share only surface-level vocabulary. For example: a "location system" in a vehicle dispatch patent means fleet tracking, not browser geolocation.
-- Only assign 0.0 if the page is genuinely off-topic. Borderline pages should score 0.25, not 0.0.
+- USE-CASE MATCH IS MANDATORY. Shared vocabulary alone is insufficient for a score above 0.25. The page must describe the same product use-case/domain as the patent claim. If the patent description context indicates a vehicle dispatch / fleet management system, score browser/device geolocation APIs at 0.0 — they serve a fundamentally different use-case (client-side position detection) even though both say "location". Apply this principle to every candidate.
+- Legal documents, terms of service, policies, and pricing pages are NOT documentation. Score them 0.0.
+- Only assign 0.0 if the page is genuinely off-topic. Borderline pages in the right domain should score 0.25, not 0.0.
 - Drop URLs that score 0.0 against every element.
 - Prefer canonical documentation/help/answer pages over generic landing or per-content pages.
 - Return JSON only.

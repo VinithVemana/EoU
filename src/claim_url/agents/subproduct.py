@@ -360,6 +360,13 @@ class SubProductAgent:
             "docs", "services", "service", "overview", "platform",
             "solutions", "catalog",
         )
+        # Paths containing these segments are legal/policy/reference pages —
+        # they don't list sub-product surfaces and pollute the catalogue body.
+        _exclude_segments = frozenset({
+            "terms", "legal", "policies", "policy", "tos", "agreement",
+            "agreements", "privacy", "pricing", "billing", "support",
+            "reference", "changelog", "release-notes", "release_notes",
+        })
 
         scored: list[tuple[float, dict[str, str]]] = []
         for item in evidence:
@@ -375,6 +382,9 @@ class SubProductAgent:
                 continue
 
             segments = [s for s in path.split("/") if s]
+            # Skip legal/policy/reference pages — they don't list sub-products.
+            if any(s.lower() in _exclude_segments for s in segments):
+                continue
             depth_score = 1.0 / (1 + len(segments))  # shallower = more catalogue-y
             keyword_score = sum(
                 1 for s in segments if any(k in s.lower() for k in catalogue_keywords)
