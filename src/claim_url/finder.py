@@ -206,7 +206,8 @@ class ClaimURLFinder:
 
         LOG.info("Scoring relevance")
         scored_all = self.relevance_agent.score(
-            product=product, claim=claim, elements=elements, hits=hits
+            product=product, claim=claim, elements=elements, hits=hits,
+            spec_context=spec_text,
         )
         if self._trace is not None:
             self._trace.write("06_scoring.json", {
