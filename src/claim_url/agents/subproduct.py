@@ -25,8 +25,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Optional
@@ -60,36 +58,6 @@ SUBPRODUCT_DOMAIN_PROBE_QUERIES: tuple[str, ...] = (
     "documentation overview",
     "all services",
 )
-
-# Words too generic to be useful as targeted catalogue probe terms.
-_SPEC_KW_STOPWORDS = frozenset({
-    "a", "an", "the", "of", "in", "to", "and", "or", "is", "are", "be",
-    "for", "with", "that", "this", "at", "on", "by", "as", "from", "it",
-    "its", "not", "said", "wherein", "comprising", "configured", "based",
-    "one", "more", "each", "any", "least", "having", "method", "system",
-    "device", "computer", "processor", "memory", "data", "information",
-    "step", "steps", "further", "also", "using", "used", "may", "can",
-    "such", "than", "then", "when", "where", "which", "into", "between",
-    "about", "after", "before", "during", "including", "includes", "include",
-    "described", "shown", "figure", "embodiment", "present", "invention",
-    "example", "according", "user", "first", "second", "third", "provide",
-    "provides", "provided", "other", "these", "those", "their", "there",
-    "terminal", "address", "location", "network", "mobile", "digital",
-    "message", "server", "client", "request", "response", "output", "input",
-})
-
-
-def _spec_keywords(spec_text: str, top_n: int = 5) -> list[str]:
-    """Extract high-frequency distinctive terms from spec context.
-
-    Used to build additional targeted SerpApi catalogue probes beyond the
-    generic "{product} products list" queries.  For a dispatch/fleet patent
-    this surfaces "dispatch", "fleet", "driver", "route" which hit niche
-    sub-products that generic probes miss entirely.
-    """
-    words = re.findall(r"[a-zA-Z]{5,}", spec_text.lower())
-    freq = Counter(w for w in words if w not in _SPEC_KW_STOPWORDS)
-    return [w for w, _ in freq.most_common(top_n)]
 
 
 _SPEC_CONTEXT_BLOCK = """\
@@ -222,13 +190,11 @@ class SubProductAgent:
         the SerpApi client was not provided.
 
         When *spec_context* is provided (description paragraphs from the
-        patent), two things happen:
-        - Additional targeted SerpApi probes are added using distinctive
-          terms extracted from the spec (e.g. "dispatch", "fleet" → probes
-          hit Fleet Engine pages missed by generic catalogue queries).
-        - The spec context is injected into the LLM prompt so it can map
-          the technical domain directly onto the right sub-surfaces even
-          when those surfaces are underrepresented in the catalogue evidence.
+        patent), it is injected into the LLM prompt so the model can map
+        the technical domain directly onto the right sub-surfaces even
+        when those surfaces are underrepresented in the catalogue evidence
+        (e.g. spec language "dispatch/fleet/driver" helps the LLM prefer
+        Fleet Engine over generic mapping APIs).
         """
         evidence = self._collect_evidence(product, domains, spec_context=spec_context)
         catalogue_pages = self._fetch_catalogue_pages(evidence, domains)
@@ -300,19 +266,12 @@ class SubProductAgent:
     ) -> list[dict[str, str]]:
         """Run SerpApi catalogue-enumeration probes; return condensed evidence.
 
-        Three query families:
+        Two query families:
           1. Product-anchored ("{product} products list", "{product} all APIs", …)
           2. Domain-anchored ("products site:{domain}", "documentation overview
              site:{domain}", "all services site:{domain}") for each official
              domain — surfaces sub-product landing pages that the product-
              anchored queries may miss for niche surfaces.
-          3. Spec-keyword-anchored ("{product} {kw}" for top distinctive terms
-             from the patent spec) — when spec_context is provided, these targeted
-             probes surface niche sub-products that generic catalogue queries
-             miss.  E.g. spec containing "dispatch" / "fleet" / "driver" produces
-             "{product} dispatch fleet" which hits Fleet Engine / Mobility pages
-             directly rather than relying on them appearing in a generic products
-             index.
         """
         if self._serp is None:
             return []
@@ -321,19 +280,6 @@ class SubProductAgent:
         for d in domains:
             for tail in SUBPRODUCT_DOMAIN_PROBE_QUERIES:
                 queries.append(f"{tail} site:{d.domain}")
-
-        if spec_context and spec_context.strip():
-            spec_kws = _spec_keywords(spec_context, top_n=5)
-            if spec_kws:
-                # One combined probe per pair to avoid too many extra calls
-                for i in range(0, len(spec_kws), 2):
-                    chunk = " ".join(spec_kws[i:i + 2])
-                    queries.append(f"{product} {chunk}")
-                LOG.debug(
-                    "Sub-product spec probes: added %d queries from keywords %s",
-                    len(spec_kws) // 2 + len(spec_kws) % 2,
-                    spec_kws,
-                )
 
         queries = dedupe_keep_order(queries)
         if not queries:
