@@ -4,13 +4,25 @@ import json
 from unittest.mock import MagicMock
 
 from claim_url.agents.subproduct import SubProduct, SubProductAgent
-from claim_url.models import DomainCandidate
+from claim_url.models import DomainCandidate, SearchResult
 
 
 def _llm(payload: str) -> MagicMock:
     llm = MagicMock()
     llm.complete.return_value = payload
     return llm
+
+
+def _serp(results_by_query: dict[str, list[SearchResult]] | None = None) -> MagicMock:
+    """Return a SerpApiClient mock that returns canned results per query, or empty."""
+    serp = MagicMock()
+    canned = results_by_query or {}
+
+    def _search(query: str, *, num: int = 5) -> list[SearchResult]:
+        return canned.get(query, [])
+
+    serp.search.side_effect = _search
+    return serp
 
 
 def _domain(name: str) -> DomainCandidate:
@@ -97,3 +109,57 @@ def test_subproduct_agent_skips_entries_without_name() -> None:
     agent = SubProductAgent(llm=_llm(payload))
     result = agent.discover(product="P", claim="c", domains=[])
     assert [sp.name for sp in result] == ["Valid"]
+
+
+def test_subproduct_agent_passes_serp_evidence_to_llm() -> None:
+    """When SerpApi is provided, catalogue evidence is enumerated and embedded
+    in the LLM prompt — this is the evidence-based path."""
+    serp = _serp({
+        "P products list": [
+            SearchResult(url="https://p.example.com/products/foo",
+                         title="Foo Product", snippet="Foo product overview"),
+            SearchResult(url="https://p.example.com/products/bar-engine",
+                         title="Bar Engine", snippet="Bar Engine docs index"),
+        ],
+    })
+    payload = json.dumps(
+        {"subproducts": [
+            {"name": "Bar Engine", "vocabulary": ["bar"], "rationale": "from evidence"}
+        ]}
+    )
+    llm = _llm(payload)
+    agent = SubProductAgent(llm=llm, serp=serp, probe_results_per_query=2)
+    result = agent.discover(
+        product="P", claim="claim", domains=[_domain("p.example.com")]
+    )
+    assert [sp.name for sp in result] == ["Bar Engine"]
+    # Confirm prompt actually carried the SerpApi evidence.
+    sent_prompt = llm.complete.call_args.kwargs["prompt"]
+    assert "Bar Engine" in sent_prompt
+    assert "p.example.com/products/bar-engine" in sent_prompt
+
+
+def test_subproduct_agent_works_without_serp() -> None:
+    """When SerpApi is not provided, agent runs in memory-only mode (no
+    evidence) and still returns results from the LLM."""
+    payload = json.dumps(
+        {"subproducts": [{"name": "X", "vocabulary": [], "rationale": ""}]}
+    )
+    agent = SubProductAgent(llm=_llm(payload), serp=None)
+    result = agent.discover(product="P", claim="c", domains=[])
+    assert [sp.name for sp in result] == ["X"]
+
+
+def test_subproduct_agent_dedupes_evidence_by_url_and_caps() -> None:
+    """Evidence list dedupes by URL across queries and caps at max_evidence_items."""
+    same_url = SearchResult(url="https://p.example.com/x", title="X", snippet="")
+    serp = _serp({
+        "P products list": [same_url, same_url, same_url],
+        "P all APIs": [same_url],
+    })
+    payload = json.dumps({"subproducts": []})
+    agent = SubProductAgent(llm=_llm(payload), serp=serp, max_evidence_items=10)
+    agent.discover(product="P", claim="c", domains=[])
+    # Only one URL in evidence after dedupe — confirm by inspecting prompt.
+    sent_prompt = agent._llm.complete.call_args.kwargs["prompt"]
+    assert sent_prompt.count("p.example.com/x") == 1

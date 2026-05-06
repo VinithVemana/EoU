@@ -47,10 +47,12 @@ I/O-bound stages dispatch through bounded `ThreadPoolExecutor`s. Worker counts c
 
 ### Sub-product probe — `subproduct.py`
 - Optional stage between Extractor and Rewriter. Default ON; disable with `--no-subproduct-probe`.
-- One LLM call: maps the **full claim** onto the sub-products / APIs / SDKs / feature surfaces of `{product}` whose docs are most likely to evidence the claim's limitations.
-- Output is a list of `SubProduct(name, vocabulary, rationale)` consumed by the rewriter to (a) seed product-feature vocabulary and (b) force per-surface query coverage.
-- Generic — no product-specific hardcoding. Works for any umbrella product (Google Maps Platform, AWS, Salesforce, …).
-- Failure (invalid JSON, LLM error) returns an empty list; rewriter degrades gracefully to its default behaviour.
+- **Evidence-based, not memory-based.** Two passes:
+  1. SerpApi catalogue-enumeration probes (parallel via `ThreadPoolExecutor(max_workers=5)`) — both product-anchored (`"{product} products list"`, `"{product} all APIs"`, etc.) and per-domain anchored (`"products site:{domain}"`, `"documentation overview site:{domain}"`). Returns the actual catalogue advertised by the vendor.
+  2. One LLM call asks the model to pick claim-relevant entries from the enumerated evidence (with the full claim text as context). The prompt instructs the LLM to treat the evidence as ground truth and prefer evidence-listed entries.
+- Output is `list[SubProduct(name, vocabulary, rationale)]` consumed by the rewriter to (a) seed product-feature vocabulary and (b) force per-surface query coverage.
+- Generic — no product-specific hardcoding. The catalogue probes work for any vendor with an indexed docs/marketing site (AWS, Salesforce, Google Maps Platform, Azure, …). Memory-only fallback (no SerpApi) still works but is weaker; the constructor accepts `serp=None`.
+- Failure (invalid JSON, LLM error) returns an empty list; rewriter degrades gracefully.
 
 ### Rewriter — `rewriter.py`
 - **Load-bearing for recall**. Without this stage, raw patent vocabulary returns near-zero hits on narrow `site:` searches.
