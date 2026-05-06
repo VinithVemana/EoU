@@ -47,12 +47,13 @@ I/O-bound stages dispatch through bounded `ThreadPoolExecutor`s. Worker counts c
 
 ### Sub-product probe — `subproduct.py`
 - Optional stage between Extractor and Rewriter. Default ON; disable with `--no-subproduct-probe`.
-- **Evidence-based, not memory-based.** Two passes:
-  1. SerpApi catalogue-enumeration probes (parallel via `ThreadPoolExecutor(max_workers=5)`) — both product-anchored (`"{product} products list"`, `"{product} all APIs"`, etc.) and per-domain anchored (`"products site:{domain}"`, `"documentation overview site:{domain}"`). Returns the actual catalogue advertised by the vendor.
-  2. One LLM call asks the model to pick claim-relevant entries from the enumerated evidence (with the full claim text as context). The prompt instructs the LLM to treat the evidence as ground truth and prefer evidence-listed entries.
+- **Evidence-based, not memory-based.** Three passes:
+  1. SerpApi catalogue-enumeration probes (parallel via `ThreadPoolExecutor(max_workers=5)`) — both product-anchored (`"{product} products list"`, `"{product} all APIs"`, etc.) and per-domain anchored (`"products site:{domain}"`, `"documentation overview site:{domain}"`). Returns the catalogue's landing-page URLs.
+  2. **Catalogue page fetch** (when a `PageFetcher` is provided — i.e. when `--fetch-pages` is on, default ON). Ranks evidence URLs by catalogue-likelihood (path keyword match × shallow path) on the official domains only, picks top N (default 5), fetches their bodies. Niche sub-products (e.g. Mobility / Fleet Engine for Google Maps Platform) almost always appear inline on the products index page even when they never appear in SerpApi titles — fetching closes that gap.
+  3. One LLM call asks the model to pick claim-relevant entries from the enumerated evidence + page bodies (with the full claim text as context). The prompt instructs the LLM to treat the evidence as ground truth and harvest sub-product names from the catalogue page bodies.
 - Output is `list[SubProduct(name, vocabulary, rationale)]` consumed by the rewriter to (a) seed product-feature vocabulary and (b) force per-surface query coverage.
-- Generic — no product-specific hardcoding. The catalogue probes work for any vendor with an indexed docs/marketing site (AWS, Salesforce, Google Maps Platform, Azure, …). Memory-only fallback (no SerpApi) still works but is weaker; the constructor accepts `serp=None`.
-- Failure (invalid JSON, LLM error) returns an empty list; rewriter degrades gracefully.
+- Generic — no product-specific hardcoding. The catalogue probes + page-body harvest work for any vendor with an indexed docs/marketing site (AWS, Salesforce, Google Maps Platform, Azure, …).
+- Degrades gracefully: with `serp=None`, runs memory-only; with `page_fetcher=None`, skips body harvest but still uses SerpApi titles. Invalid JSON / LLM error → empty list; rewriter falls back to its baseline behaviour.
 
 ### Rewriter — `rewriter.py`
 - **Load-bearing for recall**. Without this stage, raw patent vocabulary returns near-zero hits on narrow `site:` searches.

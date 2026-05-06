@@ -150,6 +150,68 @@ def test_subproduct_agent_works_without_serp() -> None:
     assert [sp.name for sp in result] == ["X"]
 
 
+def test_subproduct_agent_fetches_catalogue_pages() -> None:
+    """When a PageFetcher is provided, the agent fetches the highest-authority
+    catalogue/overview pages from the SerpApi evidence and embeds their body
+    excerpts in the LLM prompt — niche sub-products typically appear inline
+    on those index pages but never in SerpApi titles alone."""
+    serp = _serp({
+        "P products list": [
+            SearchResult(url="https://p.example.com/products",
+                         title="Products Index", snippet="catalog overview"),
+            SearchResult(url="https://p.example.com/some/deep/nested/legal/terms",
+                         title="Terms", snippet="legal page"),
+            SearchResult(url="https://other-third-party.example.org/products/p",
+                         title="3rd party blog", snippet="external"),
+        ],
+    })
+
+    fetcher = MagicMock()
+    fetcher.fetch_many.return_value = {
+        "https://p.example.com/products":
+            "Foo API. Bar Engine. Baz SDK. Niche Mobility Service. Driver Tools.",
+    }
+
+    payload = json.dumps(
+        {"subproducts": [
+            {"name": "Niche Mobility Service", "vocabulary": ["mobility"],
+             "rationale": "harvested from catalogue page body"}
+        ]}
+    )
+    llm = _llm(payload)
+
+    agent = SubProductAgent(
+        llm=llm, serp=serp, page_fetcher=fetcher,
+        probe_results_per_query=3, max_catalogue_pages=2,
+    )
+    result = agent.discover(
+        product="P", claim="some claim", domains=[_domain("p.example.com")]
+    )
+    # 1) page fetcher was invoked with the official-domain URL only
+    fetched = fetcher.fetch_many.call_args.args[0]
+    assert "https://p.example.com/products" in fetched
+    # 3rd-party domains are filtered out of catalogue candidates
+    assert all("third-party" not in u for u in fetched)
+    # 2) prompt embedded the page body so the LLM can harvest from it
+    sent_prompt = llm.complete.call_args.kwargs["prompt"]
+    assert "Niche Mobility Service" in sent_prompt
+    assert "Driver Tools" in sent_prompt
+    # 3) the LLM picks something from the body
+    assert [sp.name for sp in result] == ["Niche Mobility Service"]
+
+
+def test_subproduct_agent_skips_catalogue_fetch_without_fetcher() -> None:
+    """No PageFetcher → no catalogue-page fetch. Probe still runs evidence-only."""
+    serp = _serp({"P products list": [
+        SearchResult(url="https://p.example.com/products", title="Idx", snippet=""),
+    ]})
+    payload = json.dumps({"subproducts": []})
+    agent = SubProductAgent(llm=_llm(payload), serp=serp, page_fetcher=None)
+    agent.discover(product="P", claim="c", domains=[_domain("p.example.com")])
+    sent_prompt = agent._llm.complete.call_args.kwargs["prompt"]
+    assert "no catalogue pages fetched" in sent_prompt
+
+
 def test_subproduct_agent_dedupes_evidence_by_url_and_caps() -> None:
     """Evidence list dedupes by URL across queries and caps at max_evidence_items."""
     same_url = SearchResult(url="https://p.example.com/x", title="X", snippet="")

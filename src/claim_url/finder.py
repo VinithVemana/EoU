@@ -71,7 +71,10 @@ class ClaimURLFinder:
         self.page_fetcher = page_fetcher
         self._trace = trace_writer
         self.subproduct_agent: Optional[SubProductAgent] = (
-            SubProductAgent(llm=llm, serp=serp, max_subproducts=max_subproducts)
+            SubProductAgent(
+                llm=llm, serp=serp, page_fetcher=page_fetcher,
+                max_subproducts=max_subproducts,
+            )
             if enable_subproduct_probe else None
         )
         self.diversity_prefix_segments = max(1, int(diversity_prefix_segments))

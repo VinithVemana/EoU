@@ -27,13 +27,16 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from claim_url._progress import progress
 from claim_url.llm import LLMClient
 from claim_url.models import DomainCandidate, SearchResult
 from claim_url.serp import SerpApiClient
-from claim_url.utils import dedupe_keep_order, parse_json_object
+from claim_url.utils import dedupe_keep_order, domain_matches, normalize_domain, parse_json_object
+
+if TYPE_CHECKING:
+    from claim_url.fetch import PageFetcher
 
 
 LOG = logging.getLogger("claim-url-finder")
@@ -78,6 +81,12 @@ SerpApi catalogue evidence (real titles + URLs surfaced by enumeration probes
 on the official domains — this is the actual menu of sub-products, NOT what
 you may recall from training memory):
 {evidence_json}
+
+Catalogue page bodies (stripped text of the highest-authority catalogue /
+overview pages on the official domains — these typically render the full
+product menu inline. Read these carefully and harvest sub-product names from
+them, especially niche entries you might not recall from training):
+{catalogue_pages_json}
 
 Task:
 From the catalogue evidence above, identify which sub-products, APIs, SDKs,
@@ -131,20 +140,26 @@ class SubProductAgent:
         self,
         llm: LLMClient,
         serp: SerpApiClient | None = None,
+        page_fetcher: "PageFetcher | None" = None,
         *,
         max_subproducts: int = 8,
         probe_results_per_query: int = 8,
         max_probe_workers: int = 5,
         max_evidence_items: int = 60,
+        max_catalogue_pages: int = 5,
+        catalogue_body_chars: int = 4000,
     ) -> None:
         if max_subproducts < 1:
             raise ValueError("max_subproducts must be >= 1")
         self._llm = llm
         self._serp = serp
+        self._page_fetcher = page_fetcher
         self.max_subproducts = max_subproducts
         self.probe_results_per_query = probe_results_per_query
         self.max_probe_workers = max(1, int(max_probe_workers))
         self.max_evidence_items = max(1, int(max_evidence_items))
+        self.max_catalogue_pages = max(0, int(max_catalogue_pages))
+        self.catalogue_body_chars = max(500, int(catalogue_body_chars))
 
     def discover(
         self,
@@ -161,6 +176,7 @@ class SubProductAgent:
         the SerpApi client was not provided.
         """
         evidence = self._collect_evidence(product, domains)
+        catalogue_pages = self._fetch_catalogue_pages(evidence, domains)
         domains_payload = [
             {"domain": d.domain, "rationale": d.rationale} for d in domains
         ]
@@ -170,6 +186,8 @@ class SubProductAgent:
             claim=claim.strip(),
             evidence_json=json.dumps(evidence, indent=2)
                 if evidence else "[]  (no catalogue evidence available)",
+            catalogue_pages_json=json.dumps(catalogue_pages, indent=2)
+                if catalogue_pages else "[]  (no catalogue pages fetched)",
             max_subproducts=self.max_subproducts,
         )
 
@@ -281,6 +299,88 @@ class SubProductAgent:
             len(deduped), len(queries),
         )
         return deduped
+
+    def _fetch_catalogue_pages(
+        self,
+        evidence: list[dict[str, str]],
+        domains: list[DomainCandidate],
+    ) -> list[dict[str, str]]:
+        """Fetch the highest-authority catalogue/overview pages from evidence.
+
+        SerpApi returns landing-page URLs, not page bodies. Catalogue index
+        pages (e.g. ``mapsplatform.google.com/maps-products/``,
+        ``aws.amazon.com/products``) typically render the full sub-product
+        menu inline; fetching their bodies surfaces niche surfaces that
+        SerpApi titles do not include.
+
+        Heuristic: rank URLs whose domain matches one of the official
+        domains by catalogue-likelihood (catalogue-shaped path keywords +
+        path shortness), pick top N, fetch with PageFetcher (if provided),
+        return ``[{url, title, body_excerpt}]``. No-op when no PageFetcher
+        is configured or N is 0.
+        """
+        if self._page_fetcher is None or self.max_catalogue_pages <= 0:
+            return []
+
+        official = [normalize_domain(d.domain) or d.domain for d in domains]
+        if not official:
+            return []
+
+        catalogue_keywords = (
+            "products", "product", "apis", "api", "documentation",
+            "docs", "services", "service", "overview", "platform",
+            "solutions", "catalog",
+        )
+
+        scored: list[tuple[float, dict[str, str]]] = []
+        for item in evidence:
+            url = item.get("url") or ""
+            host = normalize_domain(url) or ""
+            if not host or not any(domain_matches(host, d) for d in official):
+                continue
+
+            try:
+                from urllib.parse import urlparse
+                path = urlparse(url).path or "/"
+            except Exception:
+                continue
+
+            segments = [s for s in path.split("/") if s]
+            depth_score = 1.0 / (1 + len(segments))  # shallower = more catalogue-y
+            keyword_score = sum(
+                1 for s in segments if any(k in s.lower() for k in catalogue_keywords)
+            )
+            score = keyword_score + depth_score
+            if score <= 0.0 and len(segments) > 0:
+                continue
+            scored.append((score, item))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        picked = [item for _, item in scored[: self.max_catalogue_pages]]
+        if not picked:
+            return []
+
+        urls = [item["url"] for item in picked]
+        LOG.info(
+            "Sub-product catalogue: fetching %d landing pages: %s",
+            len(urls), ", ".join(urls),
+        )
+        bodies = self._page_fetcher.fetch_many(urls)
+
+        out: list[dict[str, str]] = []
+        for item in picked:
+            url = item["url"]
+            body = (bodies.get(url) or "").strip()
+            if not body:
+                continue
+            out.append({
+                "url": url,
+                "title": item.get("title", ""),
+                "body_excerpt": body[: self.catalogue_body_chars],
+            })
+
+        LOG.info("Sub-product catalogue: %d pages have non-empty bodies", len(out))
+        return out
 
     @staticmethod
     def _coerce(item: Any) -> SubProduct | None:
