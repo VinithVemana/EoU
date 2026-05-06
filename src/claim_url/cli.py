@@ -29,6 +29,8 @@ Usage examples (always invoked via the venv pinned in the global
         --cache-dir .claim_url_cache                              # custom cache dir
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
         --no-cache                                                # disable cache
+    python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
+        --trace-dir trace/run1                                    # dump per-stage JSON artifacts
 """
 
 from __future__ import annotations
@@ -60,6 +62,7 @@ from claim_url.llm import LLMClient
 from claim_url.logging_setup import configure_logging
 from claim_url.models import FinderResult
 from claim_url.serp import SerpApiClient
+from claim_url.trace import TraceWriter
 from claim_url.utils import dedupe_keep_order, normalize_domain
 
 
@@ -213,6 +216,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--no-cache", action="store_true",
         help="Disable the disk cache for this run (every call hits the network).",
+    )
+
+    parser.add_argument(
+        "--trace-dir", default=None,
+        help=(
+            "Optional directory to dump per-stage JSON artifacts: "
+            "01_domains, 02_elements, 03_queries, 04_search, 05_pagefetch, "
+            "06_scoring, 07_final. Useful for forensics on why a URL was "
+            "missed. Disabled by default."
+        ),
     )
 
     parser.add_argument(
@@ -492,6 +505,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             max_suggestions=args.suggest_products,
         )
 
+        trace_writer: Optional[TraceWriter] = None
+        if args.trace_dir:
+            trace_writer = TraceWriter(Path(args.trace_dir))
+            LOG.info("Trace dir: %s", trace_writer.root)
+
         finder = ClaimURLFinder(
             llm=llm,
             serp=serp,
@@ -504,6 +522,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             domain_workers=args.domain_workers,
             search_workers=args.search_workers,
             score_workers=args.score_workers,
+            trace_writer=trace_writer,
         )
 
         try:

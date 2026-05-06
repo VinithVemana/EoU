@@ -54,6 +54,10 @@ class OfficialDomainSearch:
         self.exclude_url_patterns = list(exclude_url_patterns or [])
         self.max_workers = max(1, int(max_workers))
         self.last_summary: SearchSummary = SearchSummary()
+        # Populated by search(): keys are (base_query, domain), values are the
+        # raw SearchResult list from SerpApi *before* domain/exclude filtering.
+        # Used by TraceWriter to emit a per-query forensics artifact.
+        self.last_query_results: dict[tuple[str, str], list[SearchResult]] = {}
 
     def search(
         self,
@@ -119,6 +123,7 @@ class OfficialDomainSearch:
             hits.extend(self._filter_results(results, element, domain, summary))
 
         self.last_summary = summary
+        self.last_query_results = results_map
 
         LOG.info(
             "Search summary: plan=%d unique_queries=%d api_calls=%d empty=%d excluded=%d hits_kept=%d",

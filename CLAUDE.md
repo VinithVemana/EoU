@@ -86,6 +86,11 @@ $PY -m claim_url --product "X" --claim-file c.txt --output json --log-level DEBU
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --cache-dir .claim_url_cache
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --no-cache  # disable
 
+# Per-stage JSON artifacts (off by default). Dumps 01_domains → 07_final under DIR
+# so you can inspect exactly which queries fired and which URLs each (query, domain)
+# returned. Useful when a known URL is missing from the final shortlist.
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt --trace-dir trace/run1
+
 # Run the test suite
 $PY -m pytest
 

@@ -20,6 +20,7 @@ serp.py              # SerpApiClient with bounded retries + optional DiskCache
 fetch.py             # PageFetcher: shared requests.Session + ThreadPoolExecutor.fetch_many() + optional DiskCache
 finder.py            # ClaimURLFinder.run() orchestrates the six stages
 cache.py             # DiskCache: namespaced sha256-keyed JSON cache for SerpApi/LLM/page bodies
+trace.py             # TraceWriter: per-stage JSON artifacts when --trace-dir is set
 agents/              # see agents/CLAUDE.md
 llm/                 # see llm/CLAUDE.md
 ```
@@ -47,6 +48,7 @@ llm/                 # see llm/CLAUDE.md
 - `--domain-workers` / `--search-workers` / `--score-workers` — thread-pool sizes for parallel SerpApi probes / parallel `(query, domain)` searches / parallel Agent 2 batches.
 - `--exclude-url-patterns` — comma-separated regex blocklist applied in `OfficialDomainSearch._filter_results`.
 - `--cache-dir` / `--no-cache` — disk cache for SerpApi/LLM/page bodies. ON by default with dir `./.claim_url_cache`.
+- `--trace-dir DIR` — off by default. When set, `ClaimURLFinder` writes seven numbered JSON artifacts (`01_domains` … `07_final`) under `DIR`. Use to forensics why a URL was missed: per-(query, domain) raw SerpApi results live in `04_search.json`, full pre-top-k score list in `06_scoring.json`.
 - `--output {table,json}` and `--log-file PATH` are independent; both can be set.
 
 If you add a new flag, update the docstring at the top of `cli.py` (per global mandatory rule) and the example invocations in the root `CLAUDE.md`.

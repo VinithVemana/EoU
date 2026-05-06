@@ -103,6 +103,10 @@ $PY -m claim_url --product X --claim-file c.txt --output json \
 # Cache controls
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --cache-dir .claim_url_cache
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --no-cache
+
+# Per-stage JSON artifacts (forensics): dumps 01_domains, 02_elements, 03_queries,
+# 04_search (per-(query, domain) URL list), 05_pagefetch, 06_scoring, 07_final
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt --trace-dir trace/run1
 ```
 
 ---

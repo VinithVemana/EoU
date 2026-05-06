@@ -7,6 +7,8 @@ import logging
 import re
 from typing import Optional
 
+from dataclasses import asdict
+
 from claim_url.agents.domain import DomainIdentificationAgent
 from claim_url.agents.extractor import ClaimElementExtractor
 from claim_url.agents.relevance import RelevanceCheckingAgent
@@ -16,6 +18,7 @@ from claim_url.fetch import PageFetcher
 from claim_url.llm import LLMClient
 from claim_url.models import DomainCandidate, FinderResult
 from claim_url.serp import SerpApiClient
+from claim_url.trace import TraceWriter
 
 
 LOG = logging.getLogger("claim-url-finder")
@@ -38,6 +41,7 @@ class ClaimURLFinder:
         domain_workers: int = 5,
         search_workers: int = 8,
         score_workers: int = 4,
+        trace_writer: Optional[TraceWriter] = None,
     ) -> None:
         self.domain_agent = DomainIdentificationAgent(
             llm=llm, serp=serp, max_domains=max_domains, max_workers=domain_workers
@@ -58,6 +62,7 @@ class ClaimURLFinder:
             max_workers=score_workers,
         )
         self.page_fetcher = page_fetcher
+        self._trace = trace_writer
 
     def run(
         self,
@@ -76,10 +81,21 @@ class ClaimURLFinder:
         domains = self._resolve_domains(product, domain_override)
         domain_names = [d.domain for d in domains]
         LOG.info("Official domains: %s", ", ".join(domain_names))
+        if self._trace is not None:
+            self._trace.write("01_domains.json", {
+                "product": product,
+                "override_used": domain_override is not None,
+                "domains": [asdict(d) for d in domains],
+            })
 
         LOG.info("Extracting claim elements")
         elements = self.element_extractor.extract(claim)
         LOG.info("Extracted %d claim elements", len(elements))
+        if self._trace is not None:
+            self._trace.write("02_elements.json", {
+                "claim_chars": len(claim),
+                "elements": [asdict(e) for e in elements],
+            })
 
         LOG.info("Rewriting claim elements into product-vocabulary search queries")
         elements = self.query_rewriter.rewrite(
@@ -91,12 +107,42 @@ class ClaimURLFinder:
             rewritten_count,
             len(elements),
         )
+        if self._trace is not None:
+            self._trace.write("03_queries.json", {
+                "queries_per_element": self.query_rewriter.queries_per_element,
+                "rewritten": rewritten_count,
+                "total": len(elements),
+                "elements": [
+                    {
+                        "id": e.id,
+                        "label": e.label,
+                        "keywords": e.keywords,
+                        "search_queries": e.search_queries,
+                        "effective_queries": e.queries(product),
+                    }
+                    for e in elements
+                ],
+            })
 
         LOG.info("Searching official domains with SerpApi")
         hits = self.searcher.search(
             product=product, elements=elements, domains=domain_names
         )
         LOG.info("Collected %d raw hits", len(hits))
+        if self._trace is not None:
+            self._trace.write("04_search.json", {
+                "summary": asdict(self.searcher.last_summary),
+                "by_query": [
+                    {
+                        "query": q,
+                        "domain": d,
+                        "result_count": len(results),
+                        "results": [asdict(r) for r in results],
+                    }
+                    for (q, d), results in self.searcher.last_query_results.items()
+                ],
+                "kept_hits": [asdict(h) for h in hits],
+            })
 
         if not hits:
             return FinderResult(
@@ -104,16 +150,31 @@ class ClaimURLFinder:
             )
 
         if self.page_fetcher is not None:
-            self._enrich_with_bodies(hits)
+            bodies = self._enrich_with_bodies(hits)
+            if self._trace is not None:
+                self._trace.write("05_pagefetch.json", {
+                    "urls_requested": len(bodies),
+                    "bodies": {url: len(body) for url, body in bodies.items()},
+                })
 
         LOG.info("Scoring relevance")
-        scored_urls = self.relevance_agent.score(
+        scored_all = self.relevance_agent.score(
             product=product, claim=claim, elements=elements, hits=hits
-        )[:top_k]
+        )
+        if self._trace is not None:
+            self._trace.write("06_scoring.json", {
+                "top_k": top_k,
+                "scored_count": len(scored_all),
+                "all_scored": [asdict(s) for s in scored_all],
+            })
+        scored_urls = scored_all[:top_k]
 
-        return FinderResult(
+        result = FinderResult(
             product=product, domains=domains, elements=elements, urls=scored_urls
         )
+        if self._trace is not None:
+            self._trace.write("07_final.json", asdict(result))
+        return result
 
     def _resolve_domains(
         self, product: str, override: Optional[list[str]]
@@ -131,7 +192,7 @@ class ClaimURLFinder:
         LOG.info("Identifying official domains for product=%r", product)
         return self.domain_agent.discover(product)
 
-    def _enrich_with_bodies(self, hits: list[object]) -> None:
+    def _enrich_with_bodies(self, hits: list[object]) -> dict[str, str]:
         from claim_url.models import RawHit
 
         assert self.page_fetcher is not None
@@ -153,6 +214,7 @@ class ClaimURLFinder:
             len(unique_urls),
             with_body,
         )
+        return bodies
 
 
 __all__ = ["ClaimURLFinder"]
