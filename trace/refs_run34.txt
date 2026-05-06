@@ -1,0 +1,15 @@
+# Reference URLs for US7629884B2 claim 1 — Google Maps Platform Mobility / Fleet Engine
+# D1-D13 as specified by user
+https://developers.google.com/maps/documentation/mobility
+https://developers.google.com/maps/documentation/mobility/fleet-engine
+https://developers.google.com/maps/documentation/mobility/fleet-engine/essentials
+https://developers.google.com/maps/documentation/mobility/fleet-engine/journeys/trips
+https://developers.google.com/maps/documentation/mobility/fleet-engine/journeys/trips/create-trip
+https://developers.google.com/maps/documentation/mobility/services/capabilities
+https://developers.google.com/maps/documentation/mobility/services/capabilities/driver-routing
+https://developers.google.com/maps/documentation/mobility/driver-sdk/on-demand/android/trip-details
+https://developers.google.com/maps/documentation/mobility/driver-sdk/on-demand
+https://mapsplatform.google.com/resources/blog/plan-efficient-routes-for-your-fleet-route-optimization-api-is-now-generally/
+https://developers.google.com/maps/documentation/route-optimization/overview
+https://developers.google.com/maps/documentation/mobility/driver-sdk/navigation
+https://developers.google.com/maps/documentation/mobility/driver-sdk
