@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
@@ -30,10 +30,13 @@ class SearchSummary:
 class OfficialDomainSearch:
     """Search each (rewritten query, domain) pair via SerpApi.
 
-    Identical (query, domain) pairs share a single API call via an
-    in-method cache. Hits are filtered to URLs whose normalized domain
-    matches the target (or is a sub/parent of it). Optional regex
-    blocklist drops obvious non-doc paths before scoring.
+    Identical (query, domain) pairs share a single API call via dedupe
+    before dispatch. Unique queries are run in parallel through a bounded
+    thread pool — SerpApi calls are I/O-bound and thread-safe.
+
+    Hits are filtered to URLs whose normalized domain matches the target
+    (or is a sub/parent of it). Optional regex blocklist drops obvious
+    non-doc paths before scoring.
     """
 
     def __init__(
@@ -41,13 +44,15 @@ class OfficialDomainSearch:
         serp: SerpApiClient,
         *,
         per_domain: int = 5,
-        sleep_seconds: float = 0.2,
+        sleep_seconds: float = 0.0,  # retained for API compat; pacing now via worker count
         exclude_url_patterns: Optional[list[re.Pattern[str]]] = None,
+        max_workers: int = 8,
     ) -> None:
         self._serp = serp
         self.per_domain = per_domain
-        self.sleep_seconds = sleep_seconds
+        self.sleep_seconds = sleep_seconds  # noqa: F841 - kept for back-compat
         self.exclude_url_patterns = list(exclude_url_patterns or [])
+        self.max_workers = max(1, int(max_workers))
         self.last_summary: SearchSummary = SearchSummary()
 
     def search(
@@ -67,26 +72,52 @@ class OfficialDomainSearch:
             for domain in domain_list
         ]
 
-        cache: dict[tuple[str, str], list[SearchResult]] = {}
-        summary = SearchSummary(plan_size=len(plan))
-        bar = progress(total=len(plan), desc="SerpApi search", unit="q")
-        hits: list[RawHit] = []
+        unique_pairs: list[tuple[str, str]] = list(
+            dict.fromkeys((bq, d) for _, bq, d in plan)
+        )
+        summary = SearchSummary(plan_size=len(plan), unique_queries=len(unique_pairs))
 
+        results_map: dict[tuple[str, str], list[SearchResult]] = {}
+
+        def _run_one(
+            base_query: str, domain: str
+        ) -> tuple[tuple[str, str], list[SearchResult], bool]:
+            full_query = f"{base_query} site:{domain}"
+            try:
+                results = self._serp.search(full_query, num=self.per_domain)
+                return (base_query, domain), results, True
+            except Exception as exc:
+                LOG.warning(
+                    "Search failed query=%r domain=%s error=%s",
+                    base_query, domain, exc,
+                )
+                return (base_query, domain), [], False
+
+        bar = progress(total=len(unique_pairs), desc="SerpApi search", unit="q")
         try:
-            for element, base_query, domain in plan:
-                full_query = f"{base_query} site:{domain}"
-                bar.set_postfix_str(f"{element.id} site:{domain}")
-
-                results = self._run_or_cache(cache, base_query, domain, full_query, summary)
-                if not results:
-                    summary.empty_responses += 1
-
-                hits.extend(self._filter_results(results, element, domain, summary))
-                bar.update(1)
+            if unique_pairs:
+                workers = max(1, min(self.max_workers, len(unique_pairs)))
+                with ThreadPoolExecutor(max_workers=workers) as pool:
+                    futures = [
+                        pool.submit(_run_one, bq, d) for bq, d in unique_pairs
+                    ]
+                    for future in as_completed(futures):
+                        key, results, ok = future.result()
+                        results_map[key] = results
+                        if ok:
+                            summary.api_calls += 1
+                        bar.set_postfix_str(f"site:{key[1]}")
+                        bar.update(1)
         finally:
             bar.close()
 
-        summary.unique_queries = len(cache)
+        hits: list[RawHit] = []
+        for element, base_query, domain in plan:
+            results = results_map.get((base_query, domain), [])
+            if not results:
+                summary.empty_responses += 1
+            hits.extend(self._filter_results(results, element, domain, summary))
+
         self.last_summary = summary
 
         LOG.info(
@@ -99,32 +130,6 @@ class OfficialDomainSearch:
             summary.hits_kept,
         )
         return hits
-
-    def _run_or_cache(
-        self,
-        cache: dict[tuple[str, str], list[SearchResult]],
-        base_query: str,
-        domain: str,
-        full_query: str,
-        summary: SearchSummary,
-    ) -> list[SearchResult]:
-        cache_key = (base_query, domain)
-        if cache_key in cache:
-            return cache[cache_key]
-
-        try:
-            results = self._serp.search(full_query, num=self.per_domain)
-            summary.api_calls += 1
-        except Exception as exc:
-            LOG.warning(
-                "Search failed query=%r domain=%s error=%s", base_query, domain, exc
-            )
-            results = []
-
-        cache[cache_key] = results
-        if self.sleep_seconds:
-            time.sleep(self.sleep_seconds)
-        return results
 
     def _filter_results(
         self,

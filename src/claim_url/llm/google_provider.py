@@ -12,7 +12,6 @@ from claim_url.errors import ConfigError
 class GoogleProvider:
     def __init__(self, *, model: Optional[str], api_key: Optional[str]) -> None:
         self.model = model or DEFAULT_GOOGLE_MODEL
-        self.last_usage: tuple[int, int] = (0, 0)
         api_key = api_key or os.getenv(ENV_GOOGLE_KEY)
         if not api_key:
             raise ConfigError(f"{ENV_GOOGLE_KEY} is required for --llm google")
@@ -32,7 +31,7 @@ class GoogleProvider:
         max_tokens: int,
         temperature: float,
         json_mode: bool,
-    ) -> str:
+    ) -> tuple[str, int, int]:
         from google.genai import types
 
         config = types.GenerateContentConfig(
@@ -47,11 +46,9 @@ class GoogleProvider:
         )
 
         meta = getattr(response, "usage_metadata", None)
-        self.last_usage = (
-            int(getattr(meta, "prompt_token_count", 0) or 0),
-            int(getattr(meta, "candidates_token_count", 0) or 0),
-        )
-        return response.text or ""
+        prompt_toks = int(getattr(meta, "prompt_token_count", 0) or 0)
+        completion_toks = int(getattr(meta, "candidates_token_count", 0) or 0)
+        return response.text or "", prompt_toks, completion_toks
 
 
 __all__ = ["GoogleProvider"]

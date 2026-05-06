@@ -40,3 +40,7 @@ htmlcov/
 
 # Claude Code / project caches
 .claude/
+
+# claim_url disk cache (SerpApi/LLM/page bodies)
+.claim_url_cache/
+*_cache/

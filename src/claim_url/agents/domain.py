@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from claim_url._progress import progress
 from claim_url.config import DOMAIN_PROBE_QUERIES
 from claim_url.errors import ClaimURLError
 from claim_url.llm import LLMClient
-from claim_url.models import DomainCandidate
+from claim_url.models import DomainCandidate, SearchResult
 from claim_url.serp import SerpApiClient
 from claim_url.utils import normalize_domain, parse_json_object
 
@@ -92,11 +93,13 @@ class DomainIdentificationAgent:
         *,
         max_domains: int = 8,
         search_results_per_query: int = 8,
+        max_workers: int = 5,
     ) -> None:
         self._llm = llm
         self._serp = serp
         self.max_domains = max_domains
         self.search_results_per_query = search_results_per_query
+        self.max_workers = max(1, int(max_workers))
 
     def discover(self, product: str) -> list[DomainCandidate]:
         evidence = self._collect_evidence(product)
@@ -128,25 +131,36 @@ class DomainIdentificationAgent:
         return candidates
 
     def _collect_evidence(self, product: str) -> list[dict[str, str]]:
+        queries = [t.format(product=product) for t in DOMAIN_PROBE_QUERIES]
         evidence: list[dict[str, str]] = []
-        for template in progress(DOMAIN_PROBE_QUERIES, desc="Agent1 domain probes", unit="q"):
-            query = template.format(product=product)
+
+        def _probe(query: str) -> tuple[str, list[SearchResult]]:
             try:
-                results = self._serp.search(query, num=self.search_results_per_query)
+                return query, self._serp.search(query, num=self.search_results_per_query)
             except Exception as exc:
                 LOG.warning("Domain-discovery search failed query=%r error=%s", query, exc)
-                continue
+                return query, []
 
-            for result in results:
-                evidence.append(
-                    {
-                        "query": query,
-                        "url": result.url,
-                        "domain": normalize_domain(result.url) or "",
-                        "title": result.title,
-                        "snippet": result.snippet[:500],
-                    }
-                )
+        bar = progress(total=len(queries), desc="Agent1 domain probes", unit="q")
+        try:
+            workers = max(1, min(self.max_workers, len(queries)))
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = [pool.submit(_probe, q) for q in queries]
+                for future in as_completed(futures):
+                    query, results = future.result()
+                    for result in results:
+                        evidence.append(
+                            {
+                                "query": query,
+                                "url": result.url,
+                                "domain": normalize_domain(result.url) or "",
+                                "title": result.title,
+                                "snippet": result.snippet[:500],
+                            }
+                        )
+                    bar.update(1)
+        finally:
+            bar.close()
         return evidence
 
     @staticmethod

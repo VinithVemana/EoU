@@ -35,9 +35,12 @@ class ClaimURLFinder:
         queries_per_element: int = 3,
         exclude_url_patterns: Optional[list[re.Pattern[str]]] = None,
         page_fetcher: Optional[PageFetcher] = None,
+        domain_workers: int = 5,
+        search_workers: int = 8,
+        score_workers: int = 4,
     ) -> None:
         self.domain_agent = DomainIdentificationAgent(
-            llm=llm, serp=serp, max_domains=max_domains
+            llm=llm, serp=serp, max_domains=max_domains, max_workers=domain_workers
         )
         self.element_extractor = ClaimElementExtractor(llm=llm)
         self.query_rewriter = QueryRewriteAgent(
@@ -47,9 +50,12 @@ class ClaimURLFinder:
             serp=serp,
             per_domain=per_domain,
             exclude_url_patterns=exclude_url_patterns,
+            max_workers=search_workers,
         )
         self.relevance_agent = RelevanceCheckingAgent(
-            llm=llm, max_candidates_per_batch=max_candidates_per_batch
+            llm=llm,
+            max_candidates_per_batch=max_candidates_per_batch,
+            max_workers=score_workers,
         )
         self.page_fetcher = page_fetcher
 

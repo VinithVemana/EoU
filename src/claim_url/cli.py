@@ -4,23 +4,31 @@ Usage examples (always invoked via the venv pinned in the global
 ``CLAUDE.md`` — substitute the full Python path)::
 
     python -m claim_url --product "YouTube TV" --claim-file claim.txt
-    python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
-        --max-domains 3 --per-domain 10 --queries-per-element 4 --fetch-pages \\
-        --exclude-url-patterns "/browse/,/watch\\?,/community-guide/" --top-k 10
+    # Defaults: max-domains=3, per-domain=10, queries-per-element=4, fetch-pages=on,
+    #          exclude-url-patterns="/browse/,/watch\\?,/community-guide/", top-k=10
+    python -m claim_url --product "YouTube TV" --claim-file claim.txt --no-fetch-pages
     python -m claim_url --llm claude --product "Netflix" --claim-file claim.txt --top-k 15
     python -m claim_url --llm google --product "Spotify" --claim "A computer-implemented..."
+    python -m claim_url --claim-file claim.txt                    # no --product → LLM suggests products, user picks
+    python -m claim_url --claim-file claim.txt --suggest-products 5  # cap suggestion list
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
         --domains "support.google.com,tv.youtube.com"
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
         --max-domains 3 --per-domain 3 --top-k 5                 # smoke test
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
-        --queries-per-element 5 --per-domain 10                  # high recall
+        --queries-per-element 6 --per-domain 15                  # higher recall
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
-        --queries-per-element 1                                   # cheap
+        --queries-per-element 1 --no-fetch-pages                 # cheap
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
-        --fetch-pages --exclude-url-patterns "/browse/,/watch\\?,/channel/"
+        --exclude-url-patterns ""                                # don't drop any URLs
+    python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
+        --search-workers 16 --score-workers 6                    # crank parallelism
     python -m claim_url --product X --claim-file c.txt --output json \\
         --log-level DEBUG --log-file /tmp/run.log
+    python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
+        --cache-dir .claim_url_cache                              # custom cache dir
+    python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
+        --no-cache                                                # disable cache
 """
 
 from __future__ import annotations
@@ -36,6 +44,8 @@ from pathlib import Path
 from typing import Optional
 
 from claim_url import __version__
+from claim_url.agents.product import ProductSuggestion, ProductSuggestionAgent
+from claim_url.cache import DiskCache
 from claim_url.config import (
     DEFAULT_CLAUDE_MODEL,
     DEFAULT_GOOGLE_MODEL,
@@ -65,8 +75,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--product",
-        required=True,
-        help="Product name, for example 'YouTube TV'.",
+        default=None,
+        help=(
+            "Product name, for example 'YouTube TV'. If omitted, the LLM "
+            "suggests candidate products from the claim and you pick one "
+            "interactively."
+        ),
+    )
+    parser.add_argument(
+        "--suggest-products", type=int, default=7,
+        help=(
+            "Max products to suggest when --product is omitted. "
+            "Default: 7."
+        ),
     )
 
     claim_group = parser.add_mutually_exclusive_group(required=True)
@@ -94,32 +115,33 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--top-k", type=int, default=10, help="Ranked URLs to return. Default: 10.")
     parser.add_argument(
-        "--max-domains", type=int, default=8, help="Max official domains Agent 1 may return. Default: 8."
+        "--max-domains", type=int, default=3, help="Max official domains Agent 1 may return. Default: 3."
     )
     parser.add_argument(
-        "--per-domain", type=int, default=5,
-        help="SerpApi results per claim element per domain. Default: 5.",
+        "--per-domain", type=int, default=10,
+        help="SerpApi results per claim element per domain. Default: 10.",
     )
     parser.add_argument(
         "--max-candidates-per-batch", type=int, default=35,
         help="Max URLs per LLM relevance-scoring batch. Default: 35.",
     )
     parser.add_argument(
-        "--queries-per-element", type=int, default=3,
+        "--queries-per-element", type=int, default=4,
         help=(
             "Number of product-vocabulary queries QueryRewriteAgent generates "
             "per claim element. Higher = better recall, more SerpApi calls. "
-            "Default: 3."
+            "Default: 4."
         ),
     )
 
     parser.add_argument(
-        "--fetch-pages", action="store_true",
+        "--fetch-pages", action=argparse.BooleanOptionalAction, default=True,
         help=(
             "Fetch each candidate URL and pass the page body to Agent 2. "
             "Mirrors what websearch tools do internally; significantly improves "
             "recall when SerpApi snippets are generic. Adds N HTTP requests per "
-            "run (N = unique candidate URLs)."
+            "run (N = unique candidate URLs). Default: on. Disable with "
+            "--no-fetch-pages."
         ),
     )
     parser.add_argument(
@@ -136,12 +158,26 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--exclude-url-patterns", default=None,
+        "--domain-workers", type=int, default=5,
+        help="Parallel SerpApi probe workers for Agent 1 domain discovery. Default: 5.",
+    )
+    parser.add_argument(
+        "--search-workers", type=int, default=8,
+        help="Parallel SerpApi search workers for the (query, domain) plan. Default: 8.",
+    )
+    parser.add_argument(
+        "--score-workers", type=int, default=4,
+        help="Parallel LLM workers for Agent 2 relevance batches. Default: 4.",
+    )
+
+    parser.add_argument(
+        "--exclude-url-patterns", default=r"/browse/,/watch\?,/community-guide/",
         help=(
             "Comma-separated regex patterns. Any candidate URL matching one of "
             "these is dropped before scoring. Useful to filter per-content "
-            "landing pages (e.g. 'tv\\.youtube\\.com/browse/,/watch\\?'). "
-            "Patterns are matched with re.search."
+            "landing pages. Patterns are matched with re.search. "
+            r"Default: '/browse/,/watch\?,/community-guide/'. "
+            "Pass '' to disable."
         ),
     )
 
@@ -167,6 +203,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--cache-dir", default=".claim_url_cache",
+        help=(
+            "Directory for the disk cache (SerpApi, LLM, page bodies). "
+            "Saves credits/tokens across runs by skipping calls whose "
+            "inputs were already seen. Default: ./.claim_url_cache."
+        ),
+    )
+    parser.add_argument(
+        "--no-cache", action="store_true",
+        help="Disable the disk cache for this run (every call hits the network).",
+    )
+
+    parser.add_argument(
         "--output", choices=["text", "json"], default="text",
         help="Output format. Default: text.",
     )
@@ -189,6 +238,76 @@ def _read_claim(args: argparse.Namespace) -> str:
     if args.claim:
         return args.claim
     raise ValueError("Either --claim or --claim-file is required")
+
+
+def _resolve_product(
+    *,
+    explicit: Optional[str],
+    claim: str,
+    llm: LLMClient,
+    max_suggestions: int,
+    stream=sys.stdout,
+) -> str:
+    """Return product name. If ``explicit`` empty, ask the LLM for suggestions and prompt user."""
+    if explicit and explicit.strip():
+        return explicit.strip()
+
+    if not sys.stdin.isatty():
+        raise ClaimURLError(
+            "--product not provided and stdin is not a TTY; pass --product explicitly"
+        )
+
+    out = stream.write
+    out("\n--product not provided. Asking the LLM for candidate products...\n")
+    agent = ProductSuggestionAgent(llm=llm, max_suggestions=max_suggestions)
+    try:
+        suggestions = agent.suggest(claim)
+    except Exception as exc:
+        LOG.warning("Product suggestion failed: %s", exc)
+        suggestions = []
+
+    if suggestions:
+        out("\n=== Suggested products ===\n")
+        for idx, item in enumerate(suggestions, start=1):
+            vendor = f" ({item.vendor})" if item.vendor else ""
+            out(f"  [{idx}] {item.name}{vendor}\n")
+            if item.rationale:
+                out(f"      {item.rationale}\n")
+        out("  [c] enter a custom product name\n")
+    else:
+        out("(no suggestions returned by the LLM)\n")
+
+    while True:
+        try:
+            choice = input("\nPick a product [number / c / custom name]: ").strip()
+        except EOFError:
+            raise ClaimURLError("No product selected (EOF on stdin)") from None
+
+        if not choice:
+            continue
+
+        if choice.isdigit() and suggestions:
+            idx = int(choice)
+            if 1 <= idx <= len(suggestions):
+                picked = suggestions[idx - 1].name
+                out(f"Using product: {picked}\n")
+                return picked
+            out(f"  invalid index — pick 1..{len(suggestions)} or type a custom name\n")
+            continue
+
+        if choice.lower() == "c":
+            try:
+                custom = input("Enter product name: ").strip()
+            except EOFError:
+                raise ClaimURLError("No product entered (EOF on stdin)") from None
+            if custom:
+                out(f"Using product: {custom}\n")
+                return custom
+            continue
+
+        # Treat anything else as a literal product name.
+        out(f"Using product: {choice}\n")
+        return choice
 
 
 def _parse_url_pattern_list(value: Optional[str]) -> list[re.Pattern[str]]:
@@ -253,11 +372,22 @@ def _print_text_result(result: FinderResult, *, stream=sys.stdout) -> None:
         out("\n")
 
 
-def _print_pricing_summary(llm: LLMClient, elapsed: float, *, stream=sys.stdout) -> None:
-    """Append model + token + cost summary to stdout and the log."""
+def _print_pricing_summary(
+    llm: LLMClient,
+    elapsed: float,
+    *,
+    serp_cache: Optional[DiskCache] = None,
+    fetch_cache: Optional[DiskCache] = None,
+    stream=sys.stdout,
+) -> None:
+    """Append model + token + cost + cache-savings summary to stdout and log."""
     usage = llm.usage
     cost_str = (
         f"${usage.cost_usd:.4f}" if usage.cost_usd is not None else "n/a (model not in pricing table)"
+    )
+    cached_cost_str = (
+        f"${usage.cached_cost_usd:.4f}"
+        if usage.cached_cost_usd is not None else "n/a"
     )
 
     out = stream.write
@@ -271,8 +401,22 @@ def _print_pricing_summary(llm: LLMClient, elapsed: float, *, stream=sys.stdout)
     out(f"  estimated cost:    {cost_str}\n")
     out(f"  elapsed:           {elapsed:.1f}s\n")
 
+    out("\n=== Cache savings ===\n")
+    out(f"  llm cache hits:    {usage.cache_hits}\n")
+    out(f"  tokens saved:      {usage.cached_total_tokens:,} "
+        f"(prompt={usage.cached_prompt_tokens:,}, "
+        f"completion={usage.cached_completion_tokens:,})\n")
+    out(f"  cost saved:        {cached_cost_str}\n")
+    if serp_cache is not None:
+        out(f"  serp cache:        hits={serp_cache.hits} "
+            f"misses={serp_cache.misses} writes={serp_cache.writes}\n")
+    if fetch_cache is not None:
+        out(f"  page cache:        hits={fetch_cache.hits} "
+            f"misses={fetch_cache.misses} writes={fetch_cache.writes}\n")
+
     LOG.info(
-        "Pricing summary: provider=%s model=%s calls=%d prompt=%d completion=%d total=%d cost=%s",
+        "Pricing summary: provider=%s model=%s calls=%d prompt=%d completion=%d "
+        "total=%d cost=%s cache_hits=%d tokens_saved=%d cost_saved=%s",
         llm.provider.value,
         llm.model,
         usage.calls,
@@ -280,6 +424,9 @@ def _print_pricing_summary(llm: LLMClient, elapsed: float, *, stream=sys.stdout)
         usage.completion_tokens,
         usage.total_tokens,
         cost_str,
+        usage.cache_hits,
+        usage.cached_total_tokens,
+        cached_cost_str,
     )
 
 
@@ -310,12 +457,24 @@ def main(argv: Optional[list[str]] = None) -> int:
         domain_override = _parse_domain_override(args.domains)
         exclude_patterns = _parse_url_pattern_list(args.exclude_url_patterns)
 
+        cache_root: Optional[Path] = None
+        if not args.no_cache:
+            cache_root = Path(args.cache_dir).expanduser()
+            LOG.info("Cache dir: %s", cache_root)
+        else:
+            LOG.info("Cache disabled (--no-cache)")
+
+        llm_cache = DiskCache(cache_root, "llm", enabled=not args.no_cache)
+        serp_cache = DiskCache(cache_root, "serp", enabled=not args.no_cache)
+        fetch_cache = DiskCache(cache_root, "page", enabled=not args.no_cache)
+
         llm = LLMClient(
             provider=LLMProvider(args.llm),
             model=args.model,
             api_key=args.llm_api_key,
+            cache=llm_cache,
         )
-        serp = SerpApiClient(api_key=args.serpapi_key)
+        serp = SerpApiClient(api_key=args.serpapi_key, cache=serp_cache)
 
         page_fetcher: Optional[PageFetcher] = None
         if args.fetch_pages:
@@ -323,7 +482,15 @@ def main(argv: Optional[list[str]] = None) -> int:
                 max_chars=args.fetch_max_chars,
                 timeout=args.fetch_timeout,
                 max_workers=args.fetch_workers,
+                disk_cache=fetch_cache,
             )
+
+        product = _resolve_product(
+            explicit=args.product,
+            claim=claim,
+            llm=llm,
+            max_suggestions=args.suggest_products,
+        )
 
         finder = ClaimURLFinder(
             llm=llm,
@@ -334,12 +501,15 @@ def main(argv: Optional[list[str]] = None) -> int:
             queries_per_element=args.queries_per_element,
             exclude_url_patterns=exclude_patterns,
             page_fetcher=page_fetcher,
+            domain_workers=args.domain_workers,
+            search_workers=args.search_workers,
+            score_workers=args.score_workers,
         )
 
         try:
             result = finder.run(
                 claim=claim,
-                product=args.product,
+                product=product,
                 top_k=args.top_k,
                 domain_override=domain_override,
             )
@@ -360,7 +530,12 @@ def main(argv: Optional[list[str]] = None) -> int:
             len(result.urls),
             elapsed,
         )
-        _print_pricing_summary(llm, elapsed)
+        _print_pricing_summary(
+            llm,
+            elapsed,
+            serp_cache=serp_cache,
+            fetch_cache=fetch_cache if args.fetch_pages else None,
+        )
         return 0
 
     except KeyboardInterrupt:

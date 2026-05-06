@@ -23,7 +23,6 @@ def _uses_max_completion_tokens(model: str) -> bool:
 class OpenAIProvider:
     def __init__(self, *, model: Optional[str], api_key: Optional[str]) -> None:
         self.model = model or DEFAULT_OPENAI_MODEL
-        self.last_usage: tuple[int, int] = (0, 0)
         api_key = api_key or os.getenv(ENV_OPENAI_KEY)
         if not api_key:
             raise ConfigError(f"{ENV_OPENAI_KEY} is required for --llm openai")
@@ -43,7 +42,7 @@ class OpenAIProvider:
         max_tokens: int,
         temperature: float,
         json_mode: bool,
-    ) -> str:
+    ) -> tuple[str, int, int]:
         token_kwarg = "max_completion_tokens" if _uses_max_completion_tokens(self.model) else "max_tokens"
 
         kwargs: dict[str, Any] = {
@@ -72,11 +71,9 @@ class OpenAIProvider:
                 raise
 
         usage = getattr(response, "usage", None)
-        self.last_usage = (
-            int(getattr(usage, "prompt_tokens", 0) or 0),
-            int(getattr(usage, "completion_tokens", 0) or 0),
-        )
-        return response.choices[0].message.content or ""
+        prompt_toks = int(getattr(usage, "prompt_tokens", 0) or 0)
+        completion_toks = int(getattr(usage, "completion_tokens", 0) or 0)
+        return response.choices[0].message.content or "", prompt_toks, completion_toks
 
 
 __all__ = ["OpenAIProvider"]

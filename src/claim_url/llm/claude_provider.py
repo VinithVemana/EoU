@@ -12,7 +12,6 @@ from claim_url.errors import ConfigError
 class ClaudeProvider:
     def __init__(self, *, model: Optional[str], api_key: Optional[str]) -> None:
         self.model = model or DEFAULT_CLAUDE_MODEL
-        self.last_usage: tuple[int, int] = (0, 0)
         api_key = api_key or os.getenv(ENV_ANTHROPIC_KEY)
         if not api_key:
             raise ConfigError(f"{ENV_ANTHROPIC_KEY} is required for --llm claude")
@@ -32,7 +31,7 @@ class ClaudeProvider:
         max_tokens: int,
         temperature: float,
         json_mode: bool,  # noqa: ARG002 - Claude has no native JSON mode here
-    ) -> str:
+    ) -> tuple[str, int, int]:
         response = self._client.messages.create(
             model=self.model,
             system=system,
@@ -42,17 +41,15 @@ class ClaudeProvider:
         )
 
         usage = getattr(response, "usage", None)
-        self.last_usage = (
-            int(getattr(usage, "input_tokens", 0) or 0),
-            int(getattr(usage, "output_tokens", 0) or 0),
-        )
+        prompt_toks = int(getattr(usage, "input_tokens", 0) or 0)
+        completion_toks = int(getattr(usage, "output_tokens", 0) or 0)
 
         parts: list[str] = []
         for block in response.content:
             text = getattr(block, "text", None)
             if text:
                 parts.append(text)
-        return "\n".join(parts)
+        return "\n".join(parts), prompt_toks, completion_toks
 
 
 __all__ = ["ClaudeProvider"]

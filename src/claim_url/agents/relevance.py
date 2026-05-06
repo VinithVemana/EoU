@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from claim_url._progress import progress
@@ -83,11 +84,18 @@ Schema:
 
 
 class RelevanceCheckingAgent:
-    def __init__(self, llm: LLMClient, *, max_candidates_per_batch: int = 35) -> None:
+    def __init__(
+        self,
+        llm: LLMClient,
+        *,
+        max_candidates_per_batch: int = 35,
+        max_workers: int = 4,
+    ) -> None:
         if max_candidates_per_batch < 1:
             raise ValueError("max_candidates_per_batch must be >= 1")
         self._llm = llm
         self.max_candidates_per_batch = max_candidates_per_batch
+        self.max_workers = max(1, int(max_workers))
 
     def score(
         self,
@@ -108,17 +116,29 @@ class RelevanceCheckingAgent:
         all_scored: list[ScoredURL] = []
         batches = list(chunked(candidates, self.max_candidates_per_batch))
 
-        for batch in progress(batches, desc="Agent2 scoring", unit="batch"):
-            ranked = self._score_batch(
+        def _run(batch: list[dict[str, Any]]) -> list[Any]:
+            return self._score_batch(
                 product=product,
                 claim=claim,
                 elements_payload=elements_payload,
                 batch=batch,
             )
-            for item in ranked:
-                scored = self._coerce_scored(item, by_url)
-                if scored is not None:
-                    all_scored.append(scored)
+
+        bar = progress(total=len(batches), desc="Agent2 scoring", unit="batch")
+        try:
+            if batches:
+                workers = max(1, min(self.max_workers, len(batches)))
+                with ThreadPoolExecutor(max_workers=workers) as pool:
+                    futures = [pool.submit(_run, b) for b in batches]
+                    for future in as_completed(futures):
+                        ranked = future.result()
+                        for item in ranked:
+                            scored = self._coerce_scored(item, by_url)
+                            if scored is not None:
+                                all_scored.append(scored)
+                        bar.update(1)
+        finally:
+            bar.close()
 
         return self._dedupe(all_scored)
 

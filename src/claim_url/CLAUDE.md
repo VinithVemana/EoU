@@ -16,9 +16,10 @@ models.py            # dataclasses: ClaimElement, DomainCandidate, RawHit, Score
 utils.py             # normalize_domain, domain_matches, parse_json_object, dedupe, chunked
 logging_setup.py     # configure_logging() — called only by CLI
 _progress.py         # tqdm shim (no-op fallback when tqdm not installed)
-serp.py              # SerpApiClient with bounded retries
-fetch.py             # PageFetcher: shared requests.Session + ThreadPoolExecutor.fetch_many()
+serp.py              # SerpApiClient with bounded retries + optional DiskCache
+fetch.py             # PageFetcher: shared requests.Session + ThreadPoolExecutor.fetch_many() + optional DiskCache
 finder.py            # ClaimURLFinder.run() orchestrates the six stages
+cache.py             # DiskCache: namespaced sha256-keyed JSON cache for SerpApi/LLM/page bodies
 agents/              # see agents/CLAUDE.md
 llm/                 # see llm/CLAUDE.md
 ```
@@ -35,11 +36,17 @@ llm/                 # see llm/CLAUDE.md
 
 `parse_args()` is the canonical reference for flags. Notable ones with non-obvious semantics:
 
+- `--product` — **optional**. If omitted, the CLI runs `ProductSuggestionAgent` and prompts the user to pick from a numbered menu (or type a custom name). Errors out when stdin is non-interactive.
+- `--suggest-products` (default 7) — cap on the number of products the suggestion agent returns when `--product` is missing.
 - `--domains` — bypasses Agent 1 entirely. Comma-separated.
-- `--queries-per-element` (default 3) — per-element rewritten query budget. Drives recall.
-- `--per-domain` — SerpApi `num` per call.
-- `--fetch-pages` / `--fetch-workers` — enable Stage 5 (precision boost; see agents/CLAUDE.md).
+- `--queries-per-element` (default 4) — per-element rewritten query budget. Drives recall.
+- `--per-domain` (default 10) — SerpApi `num` per call.
+- `--max-domains` (default 3) — cap on official domains Agent 1 may return.
+- `--fetch-pages` / `--no-fetch-pages` / `--fetch-workers` — Stage 5 (precision boost; see agents/CLAUDE.md). On by default.
+- `--exclude-url-patterns` — default drops `/browse/`, `/watch\?`, `/community-guide/` (per-show landing pages); pass `""` to disable.
+- `--domain-workers` / `--search-workers` / `--score-workers` — thread-pool sizes for parallel SerpApi probes / parallel `(query, domain)` searches / parallel Agent 2 batches.
 - `--exclude-url-patterns` — comma-separated regex blocklist applied in `OfficialDomainSearch._filter_results`.
+- `--cache-dir` / `--no-cache` — disk cache for SerpApi/LLM/page bodies. ON by default with dir `./.claim_url_cache`.
 - `--output {table,json}` and `--log-file PATH` are independent; both can be set.
 
 If you add a new flag, update the docstring at the top of `cli.py` (per global mandatory rule) and the example invocations in the root `CLAUDE.md`.
@@ -48,10 +55,20 @@ If you add a new flag, update the docstring at the top of `cli.py` (per global m
 
 - Shared `requests.Session` reused across workers (connection pooling).
 - `ThreadPoolExecutor` of `--fetch-workers` (default 8); each URL fetched once and cached in-memory by URL for the run.
+- Optional `DiskCache` layer (CLI passes one in by default) — non-empty bodies persist across runs keyed by `(url, max_chars)`.
 - HTML stripped with regex (intentionally not BeautifulSoup — tolerates broken HTML, no extra dep).
 - Hands ~4000 chars of body text to Agent 2. Larger windows did not improve scores in past testing and increased token cost.
 
 ## SerpApi (`serp.py`)
 
 - `SerpApiClient.search(query, num)` with bounded retries on transient HTTP errors.
-- Caller (`OfficialDomainSearch`) is responsible for `site:` scoping and the (query, domain) dedupe cache — the client itself does NOT cache.
+- Caller (`OfficialDomainSearch`) is responsible for `site:` scoping and the per-run (query, domain) dedupe cache.
+- Optional `DiskCache` (CLI wires one by default) keyed by `(engine, gl, hl, q, num)` — extends dedupe across runs and saves SerpApi credits. Empty result sets are cached too (negative caching) so repeated narrow queries skip the network.
+
+## Disk cache (`cache.py`)
+
+- `DiskCache(root, namespace, enabled=True)` — sha256-keyed JSON files at `<root>/<namespace>/<aa>/<full-hash>.json`.
+- Three namespaces in use: `serp`, `llm`, `page`.
+- LLM cache only stores deterministic completions (`temperature == 0.0`). Hits are recorded on `UsageStats.cache_hits` / `cached_*_tokens` / `cached_cost_usd` so the run summary can report what the cache saved without polluting actual usage counters.
+- CLI flags: `--cache-dir DIR` (default `./.claim_url_cache`) and `--no-cache` to disable. Cache dirs are gitignored.
+- If you change a prompt template, existing cache entries become stale but stay valid (different inputs = different hash). To force a clean run pass `--no-cache` or wipe the cache dir.

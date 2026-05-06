@@ -23,7 +23,7 @@ All LLM calls go through `llm.LLMClient` — abstracts OpenAI / Anthropic / Goog
 
 | Folder | What lives there | Read when |
 |---|---|---|
-| [src/claim_url/](src/claim_url/CLAUDE.md) | top-level modules: cli, config, errors, models, utils, finder, fetch, serp, logging | editing CLI, orchestrator, shared utils, HTTP/SerpApi clients |
+| [src/claim_url/](src/claim_url/CLAUDE.md) | top-level modules: cli, config, errors, models, utils, finder, fetch, serp, cache, logging | editing CLI, orchestrator, shared utils, HTTP/SerpApi clients, disk cache |
 | [src/claim_url/agents/](src/claim_url/agents/CLAUDE.md) | the six pipeline agents | editing pipeline stages, search budget, prompt design |
 | [src/claim_url/llm/](src/claim_url/llm/CLAUDE.md) | LLMClient + per-provider adapters | adding a provider, debugging param-compat issues |
 | [tests/](tests/CLAUDE.md) | pytest, mocked LLM + Serp | adding/modifying tests |
@@ -47,6 +47,14 @@ $PY -m claim_url --product "YouTube TV" --claim-file claim.txt
 # Or via the installed console script
 claim-url --product "YouTube TV" --claim-file claim.txt
 
+# Skip --product → LLM suggests candidate products from the claim and prompts you to pick
+$PY -m claim_url --claim-file claim.txt
+$PY -m claim_url --claim-file claim.txt --suggest-products 5
+
+# Crank parallelism (defaults: domain=5, search=8, score=4, fetch=8)
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
+  --search-workers 16 --score-workers 6 --domain-workers 8
+
 # Claude provider, larger top-k
 $PY -m claim_url --llm claude --product "Netflix" --claim-file claim.txt --top-k 15
 
@@ -57,20 +65,26 @@ $PY -m claim_url --llm google --product "Spotify" --claim "A computer-implemente
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
   --domains "support.google.com,tv.youtube.com"
 
-# High-recall: more rewritten queries per element + more results per query
+# High-recall: bump queries per element and results per query past defaults
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
-  --queries-per-element 5 --per-domain 10
+  --queries-per-element 6 --per-domain 15
 
-# Cheap: only 1 rewritten query per element (still translates patent-ese -> product-ese)
-$PY -m claim_url --product "YouTube TV" --claim-file claim.txt --queries-per-element 1
-
-# Highest fidelity: fetch each candidate page body in parallel and exclude per-show landing pages
+# Cheap: 1 rewritten query per element, skip page fetching
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
-  --fetch-pages --fetch-workers 8 \
-  --exclude-url-patterns "/browse/,/watch\?,/community-guide/"
+  --queries-per-element 1 --no-fetch-pages
+
+# Defaults already do high-fidelity fetch + exclude per-show landing pages
+# (--fetch-pages on, --exclude-url-patterns "/browse/,/watch\?,/community-guide/").
+# Override exclude list (or disable) with --exclude-url-patterns ""
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
+  --exclude-url-patterns ""
 
 # JSON output, debug logs
 $PY -m claim_url --product "X" --claim-file c.txt --output json --log-level DEBUG --log-file /tmp/run.log
+
+# Disk cache (default ON, dir = ./.claim_url_cache). Skips repeat SerpApi/LLM/page-fetch calls across runs.
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt --cache-dir .claim_url_cache
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt --no-cache  # disable
 
 # Run the test suite
 $PY -m pytest

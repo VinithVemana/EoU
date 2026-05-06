@@ -16,6 +16,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Iterable, Optional
 
+from claim_url.cache import DiskCache
 from claim_url.config import USER_AGENT
 from claim_url.errors import ConfigError
 
@@ -54,6 +55,7 @@ class PageFetcher:
         sleep_seconds: float = 0.0,
         user_agent: Optional[str] = None,
         max_workers: int = 8,
+        disk_cache: Optional[DiskCache] = None,
     ) -> None:
         self.max_chars = max_chars
         self.timeout = timeout
@@ -73,6 +75,7 @@ class PageFetcher:
 
         self._cache: dict[str, str] = {}
         self._cache_lock = threading.Lock()
+        self._disk_cache = disk_cache
 
     @property
     def cache(self) -> dict[str, str]:
@@ -80,16 +83,30 @@ class PageFetcher:
         return self._cache
 
     def fetch(self, url: str) -> str:
-        """Fetch and strip a single URL, with cache."""
+        """Fetch and strip a single URL, with cache.
+
+        Lookup order: in-memory cache (per run) → disk cache (across runs)
+        → live HTTP. Result populates both layers.
+        """
         with self._cache_lock:
             cached = self._cache.get(url)
             if cached is not None:
                 return cached
 
+        if self._disk_cache is not None:
+            disk_hit = self._disk_cache.get({"url": url, "max_chars": self.max_chars})
+            if isinstance(disk_hit, str):
+                with self._cache_lock:
+                    self._cache[url] = disk_hit
+                LOG.debug("Page fetch disk cache hit url=%s", url)
+                return disk_hit
+
         text = self._fetch_uncached(url)
 
         with self._cache_lock:
             self._cache[url] = text
+        if text and self._disk_cache is not None:
+            self._disk_cache.set({"url": url, "max_chars": self.max_chars}, text)
 
         if self.sleep_seconds:
             time.sleep(self.sleep_seconds)
