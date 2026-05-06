@@ -157,46 +157,47 @@ The package implements a **six-stage cascade** that converts a patent claim and 
 
 ## 🔧 Claim URL Finder Pipeline
 
-End-to-end flow traced from `cli.main` → `ClaimURLFinder.run`. Solid arrows = primary path; `❌` = fallback on failure.
+End-to-end flow traced from `cli.main` to `ClaimURLFinder.run`.
+
+Solid arrows show the primary path. Labeled fallback arrows show degraded-but-continuing behavior.
 
 ```mermaid
 flowchart TD
-    A([🗂️ --claim-file claim.txt + --product or interactive pick]) --> B
+    A["Input<br/>--claim-file / --claim<br/>--product optional"] --> B{"Was --product provided?"}
 
-    B["📥 Step 0 — ProductSuggestionAgent.suggest\nLLM nominates 7 candidate products; user picks (only if --product omitted)"]
-    B --> C
+    B -->|Yes| C["Use provided product"]
+    B -->|No| B1["Step 0 - ProductSuggestionAgent.suggest<br/>LLM suggests candidate products"]
+    B1 --> B2["User selects product<br/>or enters custom product"]
+    B2 --> C
 
-    C["🔍 Step 1 — DomainIdentificationAgent.discover\n5 SerpApi probes in parallel → LLM classifies vendor-owned domains"]
-    C -- ✅ vendor domains found --> D
-    C -- ❌ --domains override --> D
+    C --> D{"Were domains provided?"}
 
-    D["📐 Step 2 — ClaimElementExtractor.extract\nSingle deterministic LLM call → 4–8 ClaimElement(id, label, keywords)"]
-    D --> E
+    D -->|Yes: domains override| E["Use supplied official domains<br/>Skip Agent 1"]
+    D -->|No| D1["Step 1 - DomainIdentificationAgent.discover<br/>5 SerpApi probes in parallel"]
+    D1 --> D2["LLM classifies vendor-owned domains"]
+    D2 --> E
 
-    E["🤖 Step 3 — QueryRewriteAgent.rewrite\nPatent jargon → product vocabulary; N queries per element"]
-    E -- ✅ rewritten queries --> F
-    E -- ❌ LLM/parse failure --> F2
+    E --> F["Step 2 - ClaimElementExtractor.extract<br/>Decompose claim into ClaimElement objects"]
 
-    F2["📐 Fallback — ClaimElement.keyword_query\nQuoted product + first 4 keywords (no rewriting)"]
-    F2 --> F
+    F --> G["Step 3 - QueryRewriteAgent.rewrite<br/>Translate patent language into product-search vocabulary"]
 
-    F["🔍 Step 4 — OfficialDomainSearch.search\nDedupe (query, domain) pairs → parallel SerpApi `site:domain` calls\nFilter: domain_matches + --exclude-url-patterns"]
-    F -- ✅ raw hits --> G
-    F -- ❌ no hits --> Z2
+    G -->|Success| H["Use rewritten queries"]
+    G -->|Fallback| G1["Use ClaimElement.keyword_query<br/>Product name plus fallback keywords"]
+    G1 --> H
 
-    Z2([🏁 FinderResult(urls=[]) — empty result set])
+    H --> I["Step 4 - OfficialDomainSearch.search<br/>Dedupe query/domain pairs<br/>Run SerpApi site:domain searches in parallel"]
 
-    G{"📥 Step 5 — PageFetcher.fetch_many\n--fetch-pages on?"}
-    G -- ✅ default ON --> H
-    G -- ❌ --no-fetch-pages --> I
+    I --> J{"Any raw hits found?"}
+    J -->|No| Z0["FinderResult<br/>No URLs found"]
+    J -->|Yes| K{"Fetch pages enabled?"}
 
-    H["📥 PageFetcher: shared requests.Session + ThreadPoolExecutor\nRegex HTML strip → first 4000 chars → RawHit.body"]
-    H --> I
+    K -->|Yes, default| L["Step 5 - PageFetcher.fetch_many<br/>Fetch pages in parallel<br/>Strip HTML and attach body text"]
+    K -->|No| M["Skip page fetch<br/>Use title and snippet only"]
+    L --> N["Step 6 - RelevanceCheckingAgent.score"]
+    M --> N
 
-    I["⚖️ Step 6 — RelevanceCheckingAgent.score\nBatch 35/batch, parallel LLM scoring 0.0–1.0\nDedupe across batches: max score wins, ties merge matched_elements"]
-    I --> Z
-
-    Z([🏁 FinderResult — top-k ScoredURL ranked by score, run summary, cache savings])
+    N --> N1["Batch candidates<br/>Score with LLM in parallel<br/>Dedupe URLs by highest score"]
+    N1 --> Z["FinderResult<br/>Top-k scored URLs<br/>Run summary<br/>Cache savings"]
 ```
 
 ---
