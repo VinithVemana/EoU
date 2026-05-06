@@ -284,41 +284,139 @@ After scoring, two filters run before the final top-k cut:
 
 ## How the Patent Description Helps
 
-The patent has two parts:
-1. **Claims** — the legal requirements (what we want to chart).
-2. **Description** — paragraphs explaining the invention in plain English, with implementation details and concrete vocabulary.
+### Quick answer
 
-**The problem without description:**
+The description is used to write **better search queries**. It is **not** used in the relevance scoring stage.
 
-The claim uses patent jargon: *"remote dispatch terminal"*, *"location-based data"*, *"communications channel"*. The LLM only seeing the claim doesn't know this is a **driver dispatch system**. It might search for generic "location" or "address" APIs.
+It feeds into three stages: **Element Extraction → Sub-Product Probe → Query Rewriting**. All three happen before any URL is fetched or scored. The description never touches the scoring agent.
 
-**What the description adds:**
+---
 
-The description of US7629884B2 mentions:
-- Taxi/delivery dispatch scenarios
-- Driver mobile devices
-- Fleet management
-- Real-time vehicle tracking
+### The problem the description solves
 
-The tool extracts the most relevant paragraphs from the description and feeds them to:
+The claim text alone is written in patent jargon. It says things like:
 
-| Stage | What description helps with |
-|-------|----------------------------|
-| **Element Extractor** | Picks up vocabulary like "dispatch", "driver", "fleet" → produces better element labels and keywords |
-| **Sub-Product Probe** | LLM understands this is fleet/dispatch → prefers Fleet Engine, Mobility SDK over generic APIs |
-| **Query Rewriter** | Uses description terms to write fleet-specific queries: *"Navigation SDK driver dispatch"* instead of *"location-based data communications"* |
+> *"a remote dispatch terminal receives an address and event data and correlates the address to location-based data"*
 
-**Concrete example:**
+No Google documentation page uses those words. SerpApi will return nothing useful if you search `"remote dispatch terminal correlates address location-based data"`.
 
-Without description:
-- E1 keywords: `["address lookup", "event data", "location data"]`
-- Queries generated: `"Geocoding API address lookup"`, `"Maps JavaScript API event data"`
+The patent description explains the same invention in plain English, with real-world context:
 
-With description (describing fleet dispatch):
-- E1 keywords: `["dispatch terminal", "driver dispatch", "fleet address", "event data"]`
-- Queries generated: `"Navigation SDK driver dispatch"`, `"Fleet Engine location"`, `"Geocoding API dispatch address"`
+> *"The invention relates to a vehicle dispatch system. A central dispatcher station receives a pickup request including a street address. The dispatcher transmits the address to a driver's mobile device. The driver's device displays the destination on a turn-by-turn navigation map."*
 
-The description bridges the gap between patent language and product documentation language.
+Now the LLM knows: this is a **driver dispatch system**. It can write queries like `"Fleet Engine driver location"` or `"Navigation SDK dispatch address"` — queries that actually hit the right documentation pages.
+
+---
+
+### Step 1 — Select relevant paragraphs from the description
+
+A patent description can be 100+ paragraphs long. Most of it is boilerplate, prior-art discussion, and figure captions. Only a few paragraphs actually explain the technical implementation relevant to the specific claim.
+
+The tool picks the top 10 paragraphs using **keyword overlap**:
+
+1. Extract meaningful words from the claim text (strip stopwords like "a", "the", "comprising", "wherein").
+   - Example from Claim 1: `{dispatch, terminal, address, event, location, mobile, display, map, transmit, store, criteria}`
+2. Score every description paragraph by how many of those words it contains.
+3. Keep the top 10 highest-scoring paragraphs, in their original document order.
+
+**What gets selected for US7629884B2 Claim 1:**
+Paragraphs describing the dispatch station architecture, the driver mobile device GPS flow, how the address is transmitted to the driver, and how the navigation display updates. Paragraphs about figure numbering, prior art citations, and legal boilerplate are dropped.
+
+---
+
+### Step 2 — Inject those paragraphs into Stage 2 (Element Extractor)
+
+The element extractor LLM call receives this block appended to its prompt:
+
+```
+Additional context from the patent description (use technical terms and
+implementation detail below to produce more precise element labels and keywords —
+do not copy text verbatim; let it inform vocabulary choices):
+"""
+[selected description paragraphs here]
+"""
+```
+
+**Effect on E1 (dispatch terminal element):**
+
+| | Without description | With description |
+|-|--------------------|--------------------|
+| Label | "Receives an address and correlates to location data" | "A remote dispatch terminal receives an address and event data and correlates the address to location-based data in a database" |
+| Keywords | `["address lookup", "location data", "event data"]` | `["dispatch terminal", "address lookup", "event data", "database correlation", "location-based data"]` |
+
+The label and keywords now include **"dispatch terminal"** — a phrase the LLM pulled from the description's context, not from the claim's abstract language. That term will directly seed better queries in Stage 4.
+
+---
+
+### Step 3 — Inject into Stage 3 (Sub-Product Probe)
+
+The sub-product LLM call also receives the description. Its injected block says:
+
+```
+Patent description context (key technical domain vocabulary — use this to
+identify the claim's use-case and map it to the right sub-products; niche
+surfaces like fleet management, route optimisation, or dispatch APIs should
+be preferred when the spec language matches them, even if they are not the
+most prominent entries in the catalogue evidence):
+"""
+[selected description paragraphs here]
+"""
+```
+
+**Effect:** Without description, the LLM sees a claim about "terminals exchanging location data" and picks the most popular APIs: Geocoding API, Maps JavaScript API, Geolocation API. With description, it sees the words "driver", "dispatch", "vehicle", "fleet" and knows to look for Fleet Engine / Mobility SDK — even if those are not the most prominent entries on the `mapsplatform.google.com/maps-products/` catalogue page.
+
+---
+
+### Step 4 — Inject into Stage 4 (Query Rewriter)
+
+The query rewriter also receives the description. Its injected block says:
+
+```
+Relevant patent description context (technical implementation detail behind
+the claim — use this to pick product vocabulary matching what vendors actually
+call these features; e.g. spec says "ranking by predicted engagement" when
+claim says "ordering items by probability measure"):
+"""
+[selected description paragraphs here]
+"""
+```
+
+**Concrete before/after for E1 (dispatch terminal + address lookup):**
+
+| | Without description | With description |
+|-|--------------------|--------------------|
+| Query 1 | `"Maps JavaScript API address lookup"` | `"Fleet Engine driver dispatch address"` |
+| Query 2 | `"Geocoding API event data"` | `"Geocoding API dispatch location lookup"` |
+| Query 3 | `"location data correlation"` | `"Navigation SDK dispatch address display"` |
+| Query 4 | `"Maps SDK address marker"` | `"Routes API geocode dispatch address"` |
+
+Without description, queries are generic and could match any location API. With description, queries target the dispatch/fleet vocabulary that Fleet Engine documentation actually uses.
+
+---
+
+### What the description does NOT do
+
+**It is NOT used in Stage 7 (Relevance Scoring).**
+
+This was tried (runs 8–9) and made results worse: the relevance agent, given the spec context, became too strict. It penalised correct Fleet Engine pages ("dispatch terminals ≠ fleet management API" — wrong!) and boosted wrong ones. Without page body text for fleet pages, the agent couldn't distinguish "correct domain, different vocabulary" from "wrong domain, shared vocabulary".
+
+Result: Fleet Engine pages dropped from score 0.50 → 0.25, 7 reference URLs got scored 0.0, pool recall ceiling dropped from 100% to 46%.
+
+The description was removed from the relevance agent and has not been re-added.
+
+---
+
+### Summary table
+
+| Stage | Uses description? | What it changes |
+|-------|:-----------------:|-----------------|
+| Domain discovery | No | N/A |
+| **Element extraction** | **Yes** | Better element labels + keywords (fleet/dispatch vocabulary) |
+| **Sub-product probe** | **Yes** | Prefers niche APIs (Fleet Engine) over popular ones (Maps JS) |
+| **Query rewriting** | **Yes** | Fleet-specific queries instead of generic location queries |
+| SerpApi search | No | Runs whatever queries Stage 4 produced |
+| Page fetch | No | Just fetches URLs |
+| **Relevance scoring** | **No** | Tried — made results worse. Reverted. |
 
 ---
 
