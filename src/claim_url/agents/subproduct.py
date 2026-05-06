@@ -385,12 +385,15 @@ class SubProductAgent:
             # Skip legal/policy/reference pages — they don't list sub-products.
             if any(s.lower() in _exclude_segments for s in segments):
                 continue
-            depth_score = 1.0 / (1 + len(segments))  # shallower = more catalogue-y
             keyword_score = sum(
                 1 for s in segments if any(k in s.lower() for k in catalogue_keywords)
             )
-            score = keyword_score + depth_score
-            if score <= 0.0 and len(segments) > 0:
+            # Ratio formula: shallow paths with catalogue keywords rank highest.
+            # Additive keyword_score + depth_score was dominated by deep paths
+            # with many keyword-matching segments (e.g. /workspace/docs/api/
+            # how-tos/overview scored 3.17 while /maps-products/ scored 1.5).
+            score = (1.0 + keyword_score) / (1.0 + len(segments))
+            if score <= 0.0:
                 continue
             scored.append((score, item))
 
