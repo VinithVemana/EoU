@@ -40,6 +40,8 @@ Usage examples (always invoked via the venv pinned in the global
         --no-element-coverage                                     # plain top-k (no coverage append)
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
         --coverage-score-floor 0.3                                # accept weaker covering hits
+    python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
+        --playwright-fetch                                        # Chromium instead of requests (JS rendering + bot bypass)
 
     # Fetch claim directly from a patent number via PCS API
     python -m claim_url --product "YouTube TV" --patent "US-10123456-B2"
@@ -229,6 +231,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--fetch-workers", type=int, default=8,
         help="Parallel page-fetch workers. Default: 8.",
+    )
+    parser.add_argument(
+        "--playwright-fetch", action="store_true", default=False,
+        help=(
+            "Use Playwright Chromium instead of requests for page fetching. "
+            "Renders JavaScript and bypasses simple bot-detection (e.g. Google "
+            "support pages). Requires: pip install playwright && playwright install chromium. "
+            "Implies --fetch-pages. Default: off."
+        ),
     )
 
     parser.add_argument(
@@ -672,12 +683,13 @@ def main(argv: Optional[list[str]] = None) -> int:
         serp = SerpApiClient(api_key=args.serpapi_key, cache=serp_cache)
 
         page_fetcher: Optional[PageFetcher] = None
-        if args.fetch_pages:
+        if args.fetch_pages or args.playwright_fetch:
             page_fetcher = PageFetcher(
                 max_chars=args.fetch_max_chars,
                 timeout=args.fetch_timeout,
                 max_workers=args.fetch_workers,
                 disk_cache=fetch_cache,
+                use_playwright=args.playwright_fetch,
             )
 
         spec_context: Optional[SpecContext] = None

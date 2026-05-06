@@ -273,7 +273,7 @@ def main():
     session = requests.Session()
 
     # --- Step 1: Search ---
-    result = search_with_api_key(session, 'pn:"US-20120212660-A1"', **creds)
+    result = search_with_api_key(session, 'pn:"US7629884B2"', **creds)
     docs = result.get("docs", [])
 
     if not docs:

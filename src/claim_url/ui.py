@@ -33,8 +33,10 @@ from claim_url.finder import ClaimURLFinder
 from claim_url.llm import LLMClient
 from claim_url.logging_setup import configure_logging
 from claim_url.models import FinderResult
-from claim_url.pcs_api import fetch_claim_from_patent
+from claim_url.pcs_api import fetch_claim_from_patent, fetch_patent_claim_and_description
 from claim_url.serp import SerpApiClient
+from claim_url.spec_context import SpecContext, build_spec_context
+from claim_url.trace import TraceWriter
 
 
 LOG = logging.getLogger("claim-url-finder")
@@ -169,6 +171,33 @@ def _read_claim(claim_text: str, claim_file: Optional[str]) -> str:
             return text.strip()
 
     raise ClaimURLError("Paste a claim or upload a claim text file.")
+
+
+def _pcs_credentials(
+    *,
+    pcs_api_key: str,
+    pcs_base_url: str,
+    pcs_port: str,
+) -> tuple[str, str, str]:
+    """Resolve PCS credentials from UI inputs or the environment."""
+    import os
+
+    api_key = _text(pcs_api_key).strip() or os.environ.get(ENV_PCS_API_KEY, "")
+    base_url = _text(pcs_base_url).strip() or os.environ.get(ENV_PCS_BASE_URL, "")
+    port = _text(pcs_port).strip() or os.environ.get(ENV_PCS_PORT, "")
+
+    missing = [
+        name
+        for name, val in [(ENV_PCS_API_KEY, api_key), (ENV_PCS_BASE_URL, base_url)]
+        if not val
+    ]
+    if missing:
+        raise ClaimURLError(
+            f"PCS API credentials missing: {', '.join(missing)}. "
+            "Set them in the Patent Lookup settings or your .env file."
+        )
+
+    return api_key, base_url, port
 
 
 def load_claim_file_to_text(claim_file: Optional[str]) -> Any:
@@ -365,22 +394,18 @@ def load_claim_from_patent(
     pcs_port: str,
 ) -> tuple[Any, Any]:
     """Fetch claim text from PCS API and populate the claim textbox."""
-    import os
-
     pn = (patent_number or "").strip()
     if not pn:
         raise gr.Error("Enter a patent number first.")
 
-    api_key = _text(pcs_api_key).strip() or os.environ.get(ENV_PCS_API_KEY, "")
-    base_url = _text(pcs_base_url).strip() or os.environ.get(ENV_PCS_BASE_URL, "")
-    port = _text(pcs_port).strip() or os.environ.get(ENV_PCS_PORT, "")
-
-    missing = [name for name, val in [(ENV_PCS_API_KEY, api_key), (ENV_PCS_BASE_URL, base_url)] if not val]
-    if missing:
-        raise gr.Error(
-            f"PCS API credentials missing: {', '.join(missing)}. "
-            "Set them in the Patent Lookup settings or your .env file."
+    try:
+        api_key, base_url, port = _pcs_credentials(
+            pcs_api_key=pcs_api_key,
+            pcs_base_url=pcs_base_url,
+            pcs_port=pcs_port,
         )
+    except ClaimURLError as exc:
+        raise gr.Error(str(exc)) from exc
 
     try:
         text = fetch_claim_from_patent(
@@ -400,6 +425,11 @@ def load_claim_from_patent(
 def suggest_products(
     claim_text: str,
     claim_file: Optional[str],
+    patent_number: str,
+    claim_number: int,
+    pcs_api_key: str,
+    pcs_base_url: str,
+    pcs_port: str,
     provider: str,
     model: str,
     llm_api_key: str,
@@ -408,7 +438,25 @@ def suggest_products(
     max_suggestions: int,
 ) -> tuple[Any, Any, Any]:
     try:
-        claim = _read_claim(claim_text, claim_file)
+        try:
+            claim = _read_claim(claim_text, claim_file)
+        except ClaimURLError:
+            pn = _text(patent_number).strip()
+            if not pn:
+                raise
+            api_key, base_url, port = _pcs_credentials(
+                pcs_api_key=pcs_api_key,
+                pcs_base_url=pcs_base_url,
+                pcs_port=pcs_port,
+            )
+            claim = fetch_claim_from_patent(
+                pn,
+                int(claim_number),
+                api_key=api_key,
+                base_url=base_url,
+                port=port,
+            )
+
         cache_root = _cache_root(cache_dir, use_cache)
 
         llm = _build_llm(
@@ -470,6 +518,14 @@ def select_product_suggestion(rows: Any, evt: gr.SelectData) -> Any:
 def run_pipeline(
     claim_text: str,
     claim_file: Optional[str],
+    patent_number: str,
+    claim_number: int,
+    spec_context_enabled: bool,
+    max_spec_paragraphs: int,
+    llm_spec_context: bool,
+    pcs_api_key: str,
+    pcs_base_url: str,
+    pcs_port: str,
     product: str,
     domains: str,
     provider: str,
@@ -491,6 +547,13 @@ def run_pipeline(
     exclude_url_patterns: str,
     cache_dir: str,
     use_cache: bool,
+    trace_dir: str,
+    subproduct_probe: bool,
+    max_subproducts: int,
+    diversity_prefix_segments: int,
+    diversity_per_prefix: int,
+    element_coverage: bool,
+    coverage_score_floor: float,
 ) -> Iterator[tuple[str, list[Any], list[Any], list[Any], str, dict[str, Any], str]]:
     started = time.time()
     page_fetcher: Optional[PageFetcher] = None
@@ -501,7 +564,35 @@ def run_pipeline(
     )
 
     try:
-        claim = _read_claim(claim_text, claim_file)
+        pn = _text(patent_number).strip()
+        desc_paragraphs: list[str] = []
+
+        try:
+            claim = _read_claim(claim_text, claim_file)
+        except ClaimURLError:
+            if not pn:
+                raise
+            api_key, base_url, port = _pcs_credentials(
+                pcs_api_key=pcs_api_key,
+                pcs_base_url=pcs_base_url,
+                pcs_port=pcs_port,
+            )
+            if spec_context_enabled:
+                claim, desc_paragraphs = fetch_patent_claim_and_description(
+                    pn,
+                    int(claim_number),
+                    api_key=api_key,
+                    base_url=base_url,
+                    port=port,
+                )
+            else:
+                claim = fetch_claim_from_patent(
+                    pn,
+                    int(claim_number),
+                    api_key=api_key,
+                    base_url=base_url,
+                    port=port,
+                )
 
         product = (product or "").strip()
         if not product:
@@ -517,6 +608,11 @@ def run_pipeline(
         domain_workers = int(domain_workers)
         search_workers = int(search_workers)
         score_workers = int(score_workers)
+        max_spec_paragraphs = int(max_spec_paragraphs)
+        max_subproducts = int(max_subproducts)
+        diversity_prefix_segments = int(diversity_prefix_segments)
+        diversity_per_prefix = int(diversity_per_prefix)
+        coverage_score_floor = float(coverage_score_floor)
 
         domain_override = _parse_domain_override(_text(domains))
         exclude_patterns: list[re.Pattern[str]] = _parse_url_pattern_list(_text(exclude_url_patterns))
@@ -552,6 +648,38 @@ def run_pipeline(
                 disk_cache=fetch_cache,
             )
 
+        spec_context: Optional[SpecContext] = None
+        if spec_context_enabled and pn:
+            if not desc_paragraphs:
+                api_key, base_url, port = _pcs_credentials(
+                    pcs_api_key=pcs_api_key,
+                    pcs_base_url=pcs_base_url,
+                    pcs_port=pcs_port,
+                )
+                fetched_claim, desc_paragraphs = fetch_patent_claim_and_description(
+                    pn,
+                    int(claim_number),
+                    api_key=api_key,
+                    base_url=base_url,
+                    port=port,
+                )
+                if not claim.strip():
+                    claim = fetched_claim
+
+            spec_context = build_spec_context(
+                patent_number=pn,
+                claim_number=int(claim_number),
+                claim_text=claim,
+                paragraphs=desc_paragraphs,
+                max_paragraphs=max_spec_paragraphs,
+                llm=llm if llm_spec_context else None,
+            )
+
+        trace_writer: Optional[TraceWriter] = None
+        trace_value = _text(trace_dir).strip()
+        if trace_value:
+            trace_writer = TraceWriter(Path(trace_value).expanduser())
+
         finder = ClaimURLFinder(
             llm=llm,
             serp=serp,
@@ -564,6 +692,13 @@ def run_pipeline(
             domain_workers=domain_workers,
             search_workers=search_workers,
             score_workers=score_workers,
+            trace_writer=trace_writer,
+            enable_subproduct_probe=bool(subproduct_probe),
+            max_subproducts=max_subproducts,
+            diversity_prefix_segments=diversity_prefix_segments,
+            diversity_per_prefix=diversity_per_prefix,
+            ensure_element_coverage=bool(element_coverage),
+            coverage_score_floor=coverage_score_floor,
         )
 
         yield _empty_outputs(
@@ -579,6 +714,7 @@ def run_pipeline(
             product=product,
             top_k=top_k,
             domain_override=domain_override,
+            spec_context=spec_context,
         )
 
         elapsed = time.time() - started
@@ -726,6 +862,54 @@ def build_app() -> gr.Blocks:
                     value=DEFAULT_EXCLUDE_PATTERNS,
                 )
 
+            with gr.Accordion("Pipeline Features", open=False):
+                subproduct_probe = gr.Checkbox(
+                    label="Subproduct Probe",
+                    value=True,
+                )
+
+                max_subproducts = gr.Slider(
+                    label="Max Subproducts",
+                    minimum=1,
+                    maximum=20,
+                    value=8,
+                    step=1,
+                )
+
+                element_coverage = gr.Checkbox(
+                    label="Element Coverage",
+                    value=True,
+                )
+
+                coverage_score_floor = gr.Slider(
+                    label="Coverage Score Floor",
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.5,
+                    step=0.05,
+                )
+
+                diversity_prefix_segments = gr.Slider(
+                    label="Diversity Prefix Segments",
+                    minimum=1,
+                    maximum=10,
+                    value=4,
+                    step=1,
+                )
+
+                diversity_per_prefix = gr.Slider(
+                    label="Diversity URLs / Prefix",
+                    minimum=1,
+                    maximum=10,
+                    value=3,
+                    step=1,
+                )
+
+                trace_dir = gr.Textbox(
+                    label="Trace Directory",
+                    placeholder="trace/run1",
+                )
+
             with gr.Accordion("Runtime", open=False):
                 fetch_pages = gr.Checkbox(
                     label="Fetch Page Bodies",
@@ -781,6 +965,24 @@ def build_app() -> gr.Blocks:
                 )
 
             with gr.Accordion("Patent Lookup (PCS API)", open=False):
+                spec_context_enabled = gr.Checkbox(
+                    label="Use Spec Context",
+                    value=True,
+                )
+
+                max_spec_paragraphs = gr.Slider(
+                    label="Max Spec Paragraphs",
+                    minimum=1,
+                    maximum=30,
+                    value=10,
+                    step=1,
+                )
+
+                llm_spec_context = gr.Checkbox(
+                    label="LLM Spec Selection",
+                    value=False,
+                )
+
                 pcs_api_key = gr.Textbox(
                     label="PCS API Key",
                     type="password",
@@ -977,6 +1179,11 @@ def build_app() -> gr.Blocks:
             inputs=[
                 claim_text,
                 claim_file,
+                patent_number,
+                claim_number_input,
+                pcs_api_key,
+                pcs_base_url,
+                pcs_port,
                 provider,
                 model,
                 llm_api_key,
@@ -1004,6 +1211,14 @@ def build_app() -> gr.Blocks:
             inputs=[
                 claim_text,
                 claim_file,
+                patent_number,
+                claim_number_input,
+                spec_context_enabled,
+                max_spec_paragraphs,
+                llm_spec_context,
+                pcs_api_key,
+                pcs_base_url,
+                pcs_port,
                 product,
                 domains,
                 provider,
@@ -1025,6 +1240,13 @@ def build_app() -> gr.Blocks:
                 exclude_url_patterns,
                 cache_dir,
                 use_cache,
+                trace_dir,
+                subproduct_probe,
+                max_subproducts,
+                diversity_prefix_segments,
+                diversity_per_prefix,
+                element_coverage,
+                coverage_score_floor,
             ],
             outputs=[
                 status,

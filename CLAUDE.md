@@ -114,6 +114,10 @@ $PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
   --no-element-coverage                                 # plain top-k, no append
 
+# Playwright page fetcher (bypasses bot detection, e.g. support.google.com)
+# Requires: pip install playwright && playwright install chromium
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt --playwright-fetch
+
 # Run the test suite
 $PY -m pytest
 

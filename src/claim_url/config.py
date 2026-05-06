@@ -29,7 +29,11 @@ LOGGER_NAME = "claim-url-finder"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s - %(message)s"
 DEFAULT_LOG_FILE = "claim_url.log"
 
-USER_AGENT = "Mozilla/5.0 (compatible; ClaimURLFinder/1.0; +https://example.invalid/bot)"
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/125.0.0.0 Safari/537.36"
+)
 
 DOMAIN_PROBE_QUERIES: tuple[str, ...] = (
     "{product} official website",
