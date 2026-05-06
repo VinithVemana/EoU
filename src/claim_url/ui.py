@@ -22,6 +22,9 @@ from claim_url.config import (
     DEFAULT_GOOGLE_MODEL,
     DEFAULT_LOG_FILE,
     DEFAULT_OPENAI_MODEL,
+    ENV_PCS_API_KEY,
+    ENV_PCS_BASE_URL,
+    ENV_PCS_PORT,
     LLMProvider,
 )
 from claim_url.errors import ClaimURLError
@@ -30,6 +33,7 @@ from claim_url.finder import ClaimURLFinder
 from claim_url.llm import LLMClient
 from claim_url.logging_setup import configure_logging
 from claim_url.models import FinderResult
+from claim_url.pcs_api import fetch_claim_from_patent
 from claim_url.serp import SerpApiClient
 
 
@@ -351,6 +355,46 @@ def _empty_outputs(
         {},
         cost,
     )
+
+
+def load_claim_from_patent(
+    patent_number: str,
+    claim_number: int,
+    pcs_api_key: str,
+    pcs_base_url: str,
+    pcs_port: str,
+) -> tuple[Any, Any]:
+    """Fetch claim text from PCS API and populate the claim textbox."""
+    import os
+
+    pn = (patent_number or "").strip()
+    if not pn:
+        raise gr.Error("Enter a patent number first.")
+
+    api_key = pcs_api_key.strip() or os.environ.get(ENV_PCS_API_KEY, "")
+    base_url = pcs_base_url.strip() or os.environ.get(ENV_PCS_BASE_URL, "")
+    port = pcs_port.strip() or os.environ.get(ENV_PCS_PORT, "")
+
+    missing = [name for name, val in [(ENV_PCS_API_KEY, api_key), (ENV_PCS_BASE_URL, base_url)] if not val]
+    if missing:
+        raise gr.Error(
+            f"PCS API credentials missing: {', '.join(missing)}. "
+            "Set them in the Patent Lookup settings or your .env file."
+        )
+
+    try:
+        text = fetch_claim_from_patent(
+            pn,
+            int(claim_number),
+            api_key=api_key,
+            base_url=base_url,
+            port=port,
+        )
+    except Exception as exc:
+        raise gr.Error(f"Patent lookup failed: {exc}") from exc
+
+    status_msg = f"Loaded claim {int(claim_number)} from **{pn}** ({len(text)} chars)."
+    return text, gr.update(value=status_msg, visible=True)
 
 
 def suggest_products(
@@ -736,6 +780,21 @@ def build_app() -> gr.Blocks:
                     step=1,
                 )
 
+            with gr.Accordion("Patent Lookup (PCS API)", open=False):
+                pcs_api_key = gr.Textbox(
+                    label="PCS API Key",
+                    type="password",
+                    placeholder=f"Uses {ENV_PCS_API_KEY} env var when blank",
+                )
+                pcs_base_url = gr.Textbox(
+                    label="PCS API Base URL",
+                    placeholder=f"Uses {ENV_PCS_BASE_URL} env var when blank",
+                )
+                pcs_port = gr.Textbox(
+                    label="PCS API Port",
+                    placeholder=f"Uses {ENV_PCS_PORT} env var when blank",
+                )
+
             with gr.Accordion("Cache", open=False):
                 cache_dir = gr.Textbox(
                     label="Cache Directory",
@@ -748,6 +807,26 @@ def build_app() -> gr.Blocks:
                 )
 
         with gr.Column(elem_id="workspace"):
+            # Patent number lookup — populates the claim textbox automatically.
+            with gr.Row(equal_height=True):
+                with gr.Column(scale=5):
+                    patent_number = gr.Textbox(
+                        label="Patent Number",
+                        placeholder="e.g. US-20120212660-A1",
+                    )
+                with gr.Column(scale=1):
+                    claim_number_input = gr.Number(
+                        label="Claim #",
+                        value=1,
+                        minimum=1,
+                        step=1,
+                        precision=0,
+                    )
+                with gr.Column(scale=2):
+                    load_claim_button = gr.Button("Load Claim from Patent", variant="secondary")
+
+            patent_load_status = gr.Markdown(visible=False)
+
             # Claim-file section: file uploader on the left, patent claim on the right.
             with gr.Row(equal_height=False):
                 with gr.Column(scale=2):
@@ -764,7 +843,7 @@ def build_app() -> gr.Blocks:
                         value="",
                         lines=14,
                         max_lines=22,
-                        placeholder="Paste claim text or upload a .txt claim file...",
+                        placeholder="Paste claim text, upload a .txt file, or load from a patent number above...",
                     )
 
             # Product controls moved below the claim section.
@@ -862,6 +941,19 @@ def build_app() -> gr.Blocks:
                 "### Session Cost\n\nNo run yet.",
                 elem_id="cost-card",
             )
+
+        load_claim_button.click(
+            fn=load_claim_from_patent,
+            inputs=[
+                patent_number,
+                claim_number_input,
+                pcs_api_key,
+                pcs_base_url,
+                pcs_port,
+            ],
+            outputs=[claim_text, patent_load_status],
+            show_progress="minimal",
+        )
 
         provider.change(
             fn=lambda p: {

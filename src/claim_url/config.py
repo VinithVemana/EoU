@@ -20,6 +20,11 @@ ENV_OPENAI_KEY = "OPENAI_API_KEY"
 ENV_ANTHROPIC_KEY = "ANTHROPIC_API_KEY"
 ENV_GOOGLE_KEY = "GOOGLE_API_KEY"
 
+ENV_PCS_API_KEY = "PCS_API_KEY"
+ENV_PCS_BASE_URL = "PCS_API_BASE_URL"
+ENV_PCS_PORT = "PCS_API_PORT"
+
+
 LOGGER_NAME = "claim-url-finder"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s - %(message)s"
 DEFAULT_LOG_FILE = "claim_url.log"
@@ -44,6 +49,9 @@ __all__ = [
     "ENV_ANTHROPIC_KEY",
     "ENV_GOOGLE_KEY",
     "ENV_OPENAI_KEY",
+    "ENV_PCS_API_KEY",
+    "ENV_PCS_BASE_URL",
+    "ENV_PCS_PORT",
     "ENV_SERPAPI_KEY",
     "LLMProvider",
     "LOGGER_NAME",

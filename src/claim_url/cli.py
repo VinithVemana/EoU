@@ -40,6 +40,11 @@ Usage examples (always invoked via the venv pinned in the global
         --no-element-coverage                                     # plain top-k (no coverage append)
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
         --coverage-score-floor 0.3                                # accept weaker covering hits
+
+    # Fetch claim directly from a patent number via PCS API
+    python -m claim_url --product "YouTube TV" --patent "US-10123456-B2"
+    python -m claim_url --product "YouTube TV" --patent "US-10123456-B2" --claim-number 3
+    python -m claim_url --patent "US-20120212660-A1" --claim-number 1   # no --product → LLM suggests
 """
 
 from __future__ import annotations
@@ -62,6 +67,9 @@ from claim_url.config import (
     DEFAULT_GOOGLE_MODEL,
     DEFAULT_LOG_FILE,
     DEFAULT_OPENAI_MODEL,
+    ENV_PCS_API_KEY,
+    ENV_PCS_BASE_URL,
+    ENV_PCS_PORT,
     LLMProvider,
 )
 from claim_url.errors import ClaimURLError
@@ -70,6 +78,7 @@ from claim_url.finder import ClaimURLFinder
 from claim_url.llm import LLMClient
 from claim_url.logging_setup import configure_logging
 from claim_url.models import FinderResult
+from claim_url.pcs_api import fetch_claim_from_patent
 from claim_url.serp import SerpApiClient
 from claim_url.trace import TraceWriter
 from claim_url.utils import dedupe_keep_order, normalize_domain
@@ -102,10 +111,29 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    claim_group = parser.add_mutually_exclusive_group(required=True)
-    claim_group.add_argument("--claim", help="Patent claim text.")
+    # Claim source — at least one of --patent, --claim, or --claim-file is required
+    # (validated in main() so we can give a better error message).
+    claim_group = parser.add_mutually_exclusive_group(required=False)
+    claim_group.add_argument("--claim", help="Patent claim text (inline).")
     claim_group.add_argument(
         "--claim-file", help="Path to a text file containing the patent claim."
+    )
+    claim_group.add_argument(
+        "--patent",
+        metavar="PATENT_NUMBER",
+        help=(
+            "Patent number to look up via the PCS API, e.g. 'US-20120212660-A1'. "
+            "Requires PCS_API_KEY / PCS_API_BASE_URL / PCS_API_PORT env vars. "
+            "Use --claim-number to select a specific claim (default: 1)."
+        ),
+    )
+
+    parser.add_argument(
+        "--claim-number",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Claim number to fetch when --patent is used (1-indexed). Default: 1.",
     )
 
     parser.add_argument(
@@ -305,7 +333,45 @@ def _read_claim(args: argparse.Namespace) -> str:
         return Path(args.claim_file).read_text(encoding="utf-8")
     if args.claim:
         return args.claim
-    raise ValueError("Either --claim or --claim-file is required")
+    raise ValueError("One of --claim, --claim-file, or --patent is required")
+
+
+def _fetch_patent_claim(patent_number: str, claim_number: int) -> str:
+    """Fetch claim text from PCS API. Reads credentials from environment."""
+    import os
+    api_key = os.environ.get(ENV_PCS_API_KEY, "")
+    base_url = os.environ.get(ENV_PCS_BASE_URL, "")
+    port = os.environ.get(ENV_PCS_PORT, "")
+
+    missing = [
+        name
+        for name, val in [
+            (ENV_PCS_API_KEY, api_key),
+            (ENV_PCS_BASE_URL, base_url),
+        ]
+        if not val
+    ]
+    if missing:
+        raise ClaimURLError(
+            f"--patent requires env vars: {', '.join(missing)}. "
+            "Set them in your .env file or environment."
+        )
+
+    LOG.info(
+        "Fetching claim %d from patent '%s' via PCS API…",
+        claim_number,
+        patent_number,
+    )
+    try:
+        return fetch_claim_from_patent(
+            patent_number,
+            claim_number,
+            api_key=api_key,
+            base_url=base_url,
+            port=port,
+        )
+    except Exception as exc:
+        raise ClaimURLError(f"Patent claim lookup failed: {exc}") from exc
 
 
 def _resolve_product(
@@ -521,7 +587,15 @@ def main(argv: Optional[list[str]] = None) -> int:
     started = time.time()
 
     try:
-        claim = _read_claim(args)
+        if not args.patent and not args.claim and not args.claim_file:
+            parser.error("one of --patent / --claim / --claim-file is required")
+
+        if args.patent:
+            claim = _fetch_patent_claim(args.patent, args.claim_number)
+            LOG.info("Fetched claim %d from patent %s (%d chars)", args.claim_number, args.patent, len(claim))
+        else:
+            claim = _read_claim(args)
+
         domain_override = _parse_domain_override(args.domains)
         exclude_patterns = _parse_url_pattern_list(args.exclude_url_patterns)
 
