@@ -87,6 +87,11 @@ $PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
 # JSON output, debug logs
 $PY -m claim_url --product "X" --claim-file c.txt --output json --log-level DEBUG --log-file /tmp/run.log
 
+# Fetch claim directly from a patent via PCS API (requires PCS_API_KEY, PCS_API_BASE_URL, PCS_API_PORT)
+$PY -m claim_url --product "YouTube TV" --patent "US-20120212660-A1"          # claim 1 (default)
+$PY -m claim_url --product "YouTube TV" --patent "US-20120212660-A1" --claim-number 3
+$PY -m claim_url --patent "US-20120212660-A1"                                  # no --product → LLM suggests
+
 # Disk cache (default ON, dir = ./.claim_url_cache). Skips repeat SerpApi/LLM/page-fetch calls across runs.
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --cache-dir .claim_url_cache
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --no-cache  # disable
@@ -122,6 +127,9 @@ $PY -m pytest --cov=claim_url --cov-report=term-missing
 - `OPENAI_API_KEY` — required when `--llm openai` (default).
 - `ANTHROPIC_API_KEY` — required when `--llm claude`.
 - `GOOGLE_API_KEY` — required when `--llm google`.
+- `PCS_API_KEY` — required when using `--patent` / "Load Claim from Patent" in UI.
+- `PCS_API_BASE_URL` — required when using `--patent`.
+- `PCS_API_PORT` — optional; used in proxy-mode PCS deployments.
 
 ⚠️ **Env var name mismatch:** local `.env` may define `SERP_API_KEY` but the package reads `SERPAPI_API_KEY`. The CLI auto-loads `.env` via `python-dotenv`, but the variable name still has to match. Either rename in `.env` to `SERPAPI_API_KEY` or `export SERPAPI_API_KEY=$SERP_API_KEY` before running.
 
@@ -145,4 +153,12 @@ Do **not** stage these files into the parent `uspto-patent-files` repo at `/User
 
 ## Mistakes Log
 
-(none yet for this project)
+**2026-05-06 — Called .strip() directly on Gradio textbox values**
+DO NOT: call `.strip()` (or any str method) directly on values received from Gradio component callbacks — they are `None` when the textbox is empty, not `""`.
+Why: `load_claim_from_patent` did `pcs_api_key.strip()` → `AttributeError: 'NoneType' object has no attribute 'strip'` at runtime even though the textbox existed.
+How to apply: Always wrap Gradio textbox inputs with the existing `_text(value)` helper first (`_text(pcs_api_key).strip()`). `_text()` converts `None` → `""` safely. This is the established pattern for every other optional key field in `ui.py` (`llm_api_key`, `serpapi_key`, etc.).
+
+**2026-05-06 — Added unsupported `claim_num` param to PCS parse_claims payload**
+DO NOT: add speculative parameters to PCS API payloads without confirming the API supports them.
+Why: Adding `"claim_num": 1` to the `parse_claims` payload caused the API to return `{"data": null}`. The original `unwrap()` then returned `None`, and the subsequent `.get()` call crashed with `AttributeError: 'NoneType' object has no attribute 'get'`.
+How to apply: Only send payload fields that appear in the working `main()` reference implementation. If an API feature is uncertain, check the response structure first (log/print the raw response) before building logic on top of it. Also fix `unwrap()` defensively: only unwrap `data["data"]` when its value is a non-None dict/list.
