@@ -1,0 +1,71 @@
+{
+  "count": 6,
+  "subproducts": [
+    {
+      "name": "Maps JavaScript API",
+      "vocabulary": [
+        "map display",
+        "marker",
+        "geocoding",
+        "directions",
+        "places"
+      ],
+      "rationale": "The claim centers on displaying a map with an address correlated to location data, which aligns with browser-based map rendering and address/location visualization documented for the Maps JavaScript API."
+    },
+    {
+      "name": "Geocoding API",
+      "vocabulary": [
+        "address",
+        "geocode",
+        "reverse geocoding",
+        "latlng",
+        "results"
+      ],
+      "rationale": "The first terminal correlates a received address to location-based data, which is the core address-to-coordinate functionality covered by the Geocoding API."
+    },
+    {
+      "name": "Places API",
+      "vocabulary": [
+        "place details",
+        "autocomplete",
+        "place id",
+        "location bias",
+        "nearby search"
+      ],
+      "rationale": "If the dispatch workflow uses location-based data tied to addresses or destinations, Places API documentation can evidence how Google Maps Platform resolves and enriches location/place information."
+    },
+    {
+      "name": "Directions API",
+      "vocabulary": [
+        "route",
+        "origin",
+        "destination",
+        "waypoints",
+        "travel mode"
+      ],
+      "rationale": "A dispatch system commonly transmits event and location data to support routing or assignment decisions, and Directions API docs cover route computation between locations."
+    },
+    {
+      "name": "Maps SDK for Android",
+      "vocabulary": [
+        "map view",
+        "my location",
+        "marker",
+        "camera",
+        "geocoding"
+      ],
+      "rationale": "The second terminal is a map display unit that automatically inputs location data and displays a map, which matches mobile map rendering and location display behavior documented in the Android SDK."
+    },
+    {
+      "name": "Maps SDK for iOS",
+      "vocabulary": [
+        "map view",
+        "annotation",
+        "camera",
+        "user location",
+        "geocoding"
+      ],
+      "rationale": "The claim’s second terminal behavior also maps to iOS mobile map display and automatic location presentation features documented in the iOS SDK."
+    }
+  ]
+}

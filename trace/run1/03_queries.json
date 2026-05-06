@@ -1,0 +1,145 @@
+{
+  "queries_per_element": 4,
+  "rewritten": 6,
+  "total": 6,
+  "elements": [
+    {
+      "id": "E1",
+      "label": "A first remote terminal receives an address and event data and uses a database to correlate the address to location-based data.",
+      "keywords": [
+        "remote terminal",
+        "address lookup",
+        "event data",
+        "database correlation",
+        "location-based data"
+      ],
+      "search_queries": [
+        "Google Maps Platform geocoding address",
+        "Geocoding API address to latlng",
+        "place details address lookup",
+        "Maps JavaScript API geocode results"
+      ],
+      "effective_queries": [
+        "Google Maps Platform geocoding address",
+        "Geocoding API address to latlng",
+        "place details address lookup",
+        "Maps JavaScript API geocode results"
+      ]
+    },
+    {
+      "id": "E2",
+      "label": "A second terminal includes a map display and receives location-based data from a location system based on the second terminal's own location.",
+      "keywords": [
+        "map display unit",
+        "terminal location",
+        "location system",
+        "position-based data",
+        "mobile terminal"
+      ],
+      "search_queries": [
+        "Maps SDK for Android my location map view",
+        "Maps SDK for iOS user location map view",
+        "Maps JavaScript API map display marker",
+        "location bias nearby search Places API"
+      ],
+      "effective_queries": [
+        "Maps SDK for Android my location map view",
+        "Maps SDK for iOS user location map view",
+        "Maps JavaScript API map display marker",
+        "location bias nearby search Places API"
+      ]
+    },
+    {
+      "id": "E3",
+      "label": "The second terminal transmits its location-based data to the first terminal over a communication channel.",
+      "keywords": [
+        "transmit location data",
+        "communication channel",
+        "send to server",
+        "wireless link",
+        "terminal-to-terminal communication"
+      ],
+      "search_queries": [
+        "Directions API origin destination route",
+        "Maps JavaScript API directions service",
+        "transmit location data communication channel",
+        "Maps SDK for Android marker location"
+      ],
+      "effective_queries": [
+        "Directions API origin destination route",
+        "Maps JavaScript API directions service",
+        "transmit location data communication channel",
+        "Maps SDK for Android marker location"
+      ]
+    },
+    {
+      "id": "E4",
+      "label": "The first terminal stores the second terminal's location-based data in memory.",
+      "keywords": [
+        "store in memory",
+        "location data cache",
+        "memory storage",
+        "retain location data",
+        "first terminal memory"
+      ],
+      "search_queries": [
+        "store location data in memory",
+        "Directions API route cache",
+        "Geocoding API results memory",
+        "Places API place id storage"
+      ],
+      "effective_queries": [
+        "store location data in memory",
+        "Directions API route cache",
+        "Geocoding API results memory",
+        "Places API place id storage"
+      ]
+    },
+    {
+      "id": "E5",
+      "label": "When the stored location-based data and event data satisfy specified criteria, the first terminal sends the correlated location-based data and event data to the second terminal.",
+      "keywords": [
+        "criteria met",
+        "conditional transmission",
+        "event trigger",
+        "send correlated data",
+        "dispatch criteria"
+      ],
+      "search_queries": [
+        "conditional transmission event trigger",
+        "Directions API travel mode criteria",
+        "Places API nearby search location bias",
+        "Maps JavaScript API route origin destination"
+      ],
+      "effective_queries": [
+        "conditional transmission event trigger",
+        "Directions API travel mode criteria",
+        "Places API nearby search location bias",
+        "Maps JavaScript API route origin destination"
+      ]
+    },
+    {
+      "id": "E6",
+      "label": "The second terminal automatically inputs the received location-based data into the display unit to show a map that includes the first address.",
+      "keywords": [
+        "automatic input",
+        "map display",
+        "display first address",
+        "navigation map",
+        "auto-populate map"
+      ],
+      "search_queries": [
+        "automatic input map display",
+        "Maps SDK for Android camera map view",
+        "Maps SDK for iOS annotation user location",
+        "Geocoding API display address map"
+      ],
+      "effective_queries": [
+        "automatic input map display",
+        "Maps SDK for Android camera map view",
+        "Maps SDK for iOS annotation user location",
+        "Geocoding API display address map"
+      ]
+    }
+  ]
+}

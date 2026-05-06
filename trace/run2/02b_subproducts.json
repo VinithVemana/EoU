@@ -1,0 +1,93 @@
+{
+  "count": 8,
+  "subproducts": [
+    {
+      "name": "Google Maps Platform | Maps JavaScript API",
+      "vocabulary": [
+        "map display",
+        "map types",
+        "custom maps",
+        "markers",
+        "JavaScript"
+      ],
+      "rationale": "The claim’s second terminal automatically inputs location data into a display unit that shows a map including the first address, which aligns most closely with the Maps JavaScript API’s map display and customization features."
+    },
+    {
+      "name": "Google Maps Platform | Maps SDK for Android",
+      "vocabulary": [
+        "Android",
+        "map display",
+        "markers",
+        "location",
+        "navigation"
+      ],
+      "rationale": "A mobile terminal with a map display unit receiving location-based data and rendering a map is consistent with the Android Maps SDK’s in-app map display capabilities."
+    },
+    {
+      "name": "Google Maps Platform | Maps SDK for iOS",
+      "vocabulary": [
+        "iOS",
+        "map display",
+        "markers",
+        "location",
+        "navigation"
+      ],
+      "rationale": "The claim describes a terminal device that receives location data and displays a map, which matches the iOS Maps SDK’s embedded map and location presentation features."
+    },
+    {
+      "name": "Google Maps Platform | Places API",
+      "vocabulary": [
+        "place details",
+        "search",
+        "autocomplete",
+        "location data",
+        "place information"
+      ],
+      "rationale": "The first terminal correlates an address to location-based data, and the Places API documentation explicitly covers retrieving location data and place details for addresses and places."
+    },
+    {
+      "name": "Google Maps Platform | Geocoding API",
+      "vocabulary": [
+        "geocode",
+        "address",
+        "coordinates",
+        "location data",
+        "reverse geocoding"
+      ],
+      "rationale": "The claim’s database correlates a first address to location-based data, which is the core function of geocoding and address-to-coordinate lookup."
+    },
+    {
+      "name": "Google Maps Platform | Routes API",
+      "vocabulary": [
+        "directions",
+        "travel time",
+        "distance",
+        "route",
+        "traffic"
+      ],
+      "rationale": "The dispatch workflow implies sending event and location data conditionally based on criteria, which often pairs with routing and travel-time calculations used in dispatch systems."
+    },
+    {
+      "name": "Google Maps Platform | Distance Matrix API",
+      "vocabulary": [
+        "origins",
+        "destinations",
+        "travel distance",
+        "travel time",
+        "matrix"
+      ],
+      "rationale": "A dispatch system commonly evaluates whether location-based criteria are met using travel distance and time between terminals and addresses, which is the Distance Matrix API’s documented purpose."
+    },
+    {
+      "name": "Google Maps Platform | Navigation SDK",
+      "vocabulary": [
+        "navigation",
+        "riders",
+        "drivers",
+        "turn-by-turn",
+        "map display"
+      ],
+      "rationale": "The claim’s terminal-side map display and dispatch-oriented location exchange are closest to navigation-oriented SDK documentation that supports live guidance and driver/rider experiences."
+    }
+  ]
+}

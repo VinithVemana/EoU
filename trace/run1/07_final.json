@@ -1,0 +1,272 @@
+{
+  "product": "Google Maps Platform",
+  "domains": [
+    {
+      "domain": "developers.google.com",
+      "confidence": 0.99,
+      "rationale": "Official Google developer documentation and support hub for Google Maps Platform, including product docs, getting started guides, API references, and customer care pages.",
+      "source_urls": [
+        "https://developers.google.com/maps",
+        "https://developers.google.com/maps/documentation",
+        "https://developers.google.com/maps/support",
+        "https://developers.google.com/maps/get-started"
+      ]
+    },
+    {
+      "domain": "mapsplatform.google.com",
+      "confidence": 0.97,
+      "rationale": "Official Google Maps Platform marketing and product site, including product overview, blog/news, support resources, and API landing pages.",
+      "source_urls": [
+        "https://mapsplatform.google.com/",
+        "https://mapsplatform.google.com/resources/blog/",
+        "https://mapsplatform.google.com/lp/maps-apis/"
+      ]
+    },
+    {
+      "domain": "cloud.google.com",
+      "confidence": 0.95,
+      "rationale": "Official Google Cloud domain hosting Google Maps Platform terms, technical support guidelines, and status/support hub content relevant to product behavior and service operations.",
+      "source_urls": [
+        "https://cloud.google.com/maps-platform/terms",
+        "https://cloud.google.com/maps-platform/terms/other/tssg",
+        "https://cloud.google.com/support-hub"
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "id": "E1",
+      "label": "A first remote terminal receives an address and event data and uses a database to correlate the address to location-based data.",
+      "keywords": [
+        "remote terminal",
+        "address lookup",
+        "event data",
+        "database correlation",
+        "location-based data"
+      ],
+      "search_queries": [
+        "Google Maps Platform geocoding address",
+        "Geocoding API address to latlng",
+        "place details address lookup",
+        "Maps JavaScript API geocode results"
+      ]
+    },
+    {
+      "id": "E2",
+      "label": "A second terminal includes a map display and receives location-based data from a location system based on the second terminal's own location.",
+      "keywords": [
+        "map display unit",
+        "terminal location",
+        "location system",
+        "position-based data",
+        "mobile terminal"
+      ],
+      "search_queries": [
+        "Maps SDK for Android my location map view",
+        "Maps SDK for iOS user location map view",
+        "Maps JavaScript API map display marker",
+        "location bias nearby search Places API"
+      ]
+    },
+    {
+      "id": "E3",
+      "label": "The second terminal transmits its location-based data to the first terminal over a communication channel.",
+      "keywords": [
+        "transmit location data",
+        "communication channel",
+        "send to server",
+        "wireless link",
+        "terminal-to-terminal communication"
+      ],
+      "search_queries": [
+        "Directions API origin destination route",
+        "Maps JavaScript API directions service",
+        "transmit location data communication channel",
+        "Maps SDK for Android marker location"
+      ]
+    },
+    {
+      "id": "E4",
+      "label": "The first terminal stores the second terminal's location-based data in memory.",
+      "keywords": [
+        "store in memory",
+        "location data cache",
+        "memory storage",
+        "retain location data",
+        "first terminal memory"
+      ],
+      "search_queries": [
+        "store location data in memory",
+        "Directions API route cache",
+        "Geocoding API results memory",
+        "Places API place id storage"
+      ]
+    },
+    {
+      "id": "E5",
+      "label": "When the stored location-based data and event data satisfy specified criteria, the first terminal sends the correlated location-based data and event data to the second terminal.",
+      "keywords": [
+        "criteria met",
+        "conditional transmission",
+        "event trigger",
+        "send correlated data",
+        "dispatch criteria"
+      ],
+      "search_queries": [
+        "conditional transmission event trigger",
+        "Directions API travel mode criteria",
+        "Places API nearby search location bias",
+        "Maps JavaScript API route origin destination"
+      ]
+    },
+    {
+      "id": "E6",
+      "label": "The second terminal automatically inputs the received location-based data into the display unit to show a map that includes the first address.",
+      "keywords": [
+        "automatic input",
+        "map display",
+        "display first address",
+        "navigation map",
+        "auto-populate map"
+      ],
+      "search_queries": [
+        "automatic input map display",
+        "Maps SDK for Android camera map view",
+        "Maps SDK for iOS annotation user location",
+        "Geocoding API display address map"
+      ]
+    }
+  ],
+  "urls": [
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/geocoding-v4-overview",
+      "title": "Geocoding API v4 overview",
+      "snippet": "The Geocoding API is a service that accepts a place as an address, latitude and longitude coordinates, or Place ID. It converts the address into latitude ...",
+      "score": 1.0,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Official Geocoding API overview states it accepts an address or Place ID and converts the address into latitude/longitude coordinates, which directly supports address-to-location correlation and map placement."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/geocoding",
+      "title": "Geocode an address | Geocoding API",
+      "snippet": "Geocoding translates an address into a location on a map. When you geocode an address, the response contains the: Place ID of the location; Latitude and ...",
+      "score": 1.0,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Docs explicitly say geocoding translates an address into a location on a map and return latitude/longitude, directly evidencing address lookup and map display behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/start-v4",
+      "title": "Get Started with the Geocoding API v4",
+      "snippet": "Geocoding is the process of converting addresses (like a street address) into geographic coordinates (like latitude and longitude), which you can use to place ...",
+      "score": 1.0,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Get started page for Geocoding API v4 says it converts addresses into geographic coordinates used to place markers on a map, matching the claim's address-to-location and map display limitations."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/examples/places-autocomplete-addressform",
+      "title": "Place Autocomplete Address Form | Maps JavaScript API",
+      "snippet": "The Place Autocomplete Address Form sample captures selected address components from the Google Places database, and uses them to populate an address form.",
+      "score": 0.95,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Official sample shows Place Autocomplete capturing address components from Google Places and populating an address form, which is strong evidence for address lookup/correlation and automatic input of received location data into a display form/map workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/location",
+      "title": "Location Data | Maps SDK for Android",
+      "snippet": "The My Location layer provides a simple way to display a device's location on the map. ... My Location button to show your user their current position on the map.",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Official Android SDK docs describe the My Location layer showing the device's current position on a map, which aligns with a terminal receiving location-based data based on its own location and using it in map display behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/examples/my-location",
+      "title": "Show My Location | Maps SDK for Android",
+      "snippet": "This example shows how to enable the My Location layer and demonstrates the My Location button to show the device's current position.",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Sample documentation for enabling the My Location layer and button to display the device's current position on the map provides strong evidence for a second terminal using its own location with a map display."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/current-place-tutorial",
+      "title": "Select Current Place and Show Details on a Map",
+      "snippet": "This tutorial demonstrates building an Android app to find the device's location and display nearby places using the Maps SDK, Places SDK, and Fused Location ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Tutorial shows an Android app retrieving the device's location and displaying nearby places on a map, supporting location-based input into a map display unit and automatic map presentation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/faq",
+      "title": "Geocoding FAQ | Geocoding API",
+      "snippet": "Geocoding converts addresses into geographic coordinates to be placed on a map. Reverse Geocoding finds an address based on geographic coordinates or place ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Official Geocoding FAQ directly states that geocoding converts addresses into geographic coordinates to be placed on a map, matching address-to-location-based-data correlation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/examples/geocoding-simple",
+      "title": "Geocoding Service | Maps JavaScript API",
+      "snippet": "This example demonstrates geocoding and reverse geocoding on a map using the Google Maps JavaScript API. · Users can enter an address in a text field to geocode ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Example explicitly demonstrates geocoding and reverse geocoding with users entering an address to geocode on a map, which is strong evidence for address-to-location lookup."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/examples/places-autocomplete-directions",
+      "title": "Place Autocomplete and Directions | Maps JavaScript API",
+      "snippet": "This sample demonstrates using the Google Maps JavaScript API to calculate and display routes between two locations selected by the user using autocomplete.",
+      "score": 0.75,
+      "matched_elements": [
+        "E3",
+        "E6"
+      ],
+      "rationale": "Maps JavaScript sample combines place autocomplete with directions and displays routes between user-selected locations, which is the closest evidence here for transmitting/using location inputs and automatically showing a map route."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/place-details",
+      "title": "Place Details (New) | Places API",
+      "snippet": "The Place Details API returns comprehensive information about a place, such as its address, phone number, ratings, and reviews, using a unique place ID.",
+      "score": 0.75,
+      "matched_elements": [
+        "E1",
+        "E4"
+      ],
+      "rationale": "Official Places API docs state Place Details returns comprehensive information about a place using a unique place ID, supporting address/place lookup and storage of place/location data, though it does not describe dispatch criteria or terminal-to-terminal transmission."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places/searchText",
+      "title": "Method: places.searchText | Places API",
+      "snippet": "LocationBias. The region to search. This location serves as a bias which means results around given location might be returned.",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E5"
+      ],
+      "rationale": "Official Places API reference for text search with location bias; supports location-based querying and conditional result selection, aligning with map/location data transmission and criteria-based dispatch behavior."
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "claim_chars": 1103,
+  "elements": [
+    {
+      "id": "E1",
+      "label": "A first remote terminal receives an address and event data and correlates the address to location-based data using a database.",
+      "keywords": [
+        "remote terminal",
+        "address lookup database",
+        "event data correlation",
+        "location-based data",
+        "geocoding"
+      ],
+      "search_queries": []
+    },
+    {
+      "id": "E2",
+      "label": "A second terminal includes a map display and receives location-based data from a location system based on the second terminal's own location.",
+      "keywords": [
+        "map display unit",
+        "location system",
+        "device location data",
+        "terminal location",
+        "GPS-based data"
+      ],
+      "search_queries": []
+    },
+    {
+      "id": "E3",
+      "label": "The second terminal transmits its location-based data to the first terminal over a communication channel.",
+      "keywords": [
+        "transmit location data",
+        "communication channel",
+        "wireless link",
+        "send coordinates",
+        "terminal-to-terminal communication"
+      ],
+      "search_queries": []
+    },
+    {
+      "id": "E4",
+      "label": "The first terminal stores the second terminal's location-based data in memory.",
+      "keywords": [
+        "store in memory",
+        "location data storage",
+        "terminal memory",
+        "retain coordinates",
+        "data buffering"
+      ],
+      "search_queries": []
+    },
+    {
+      "id": "E5",
+      "label": "When the stored location-based data and event data satisfy specified criteria, the first terminal sends the first set of location-based data and the event data to the second terminal.",
+      "keywords": [
+        "criteria-based transmission",
+        "event-triggered dispatch",
+        "conditional send",
+        "location and event data",
+        "dispatch criteria"
+      ],
+      "search_queries": []
+    },
+    {
+      "id": "E6",
+      "label": "The second terminal automatically enters the received location-based data into the display unit to show a map that includes the first address.",
+      "keywords": [
+        "automatic input",
+        "map display",
+        "display address on map",
+        "auto-populate map",
+        "navigation display"
+      ],
+      "search_queries": []
+    }
+  ]
+}

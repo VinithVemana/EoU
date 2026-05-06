@@ -1,0 +1,36 @@
+{
+  "product": "Google Maps Platform",
+  "override_used": false,
+  "domains": [
+    {
+      "domain": "developers.google.com",
+      "confidence": 0.99,
+      "rationale": "Official Google developer documentation and support hub for Google Maps Platform, including product docs, getting started guides, support pages, and API references.",
+      "source_urls": [
+        "https://developers.google.com/maps",
+        "https://developers.google.com/maps/documentation",
+        "https://developers.google.com/maps/support"
+      ]
+    },
+    {
+      "domain": "mapsplatform.google.com",
+      "confidence": 0.98,
+      "rationale": "Official Google Maps Platform marketing and product site, hosting product descriptions, blog content, support links, and pricing/contact pages.",
+      "source_urls": [
+        "https://mapsplatform.google.com/",
+        "https://mapsplatform.google.com/resources/blog/",
+        "https://mapsplatform.google.com/contact-us/"
+      ]
+    },
+    {
+      "domain": "cloud.google.com",
+      "confidence": 0.93,
+      "rationale": "Official Google Cloud domain that hosts Google Maps Platform terms, technical support guidelines, and related product/legal documentation.",
+      "source_urls": [
+        "https://cloud.google.com/maps-platform/terms",
+        "https://cloud.google.com/maps-platform/terms/other/tssg",
+        "https://cloud.google.com/blog"
+      ]
+    }
+  ]
+}

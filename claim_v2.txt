@@ -1,0 +1,6 @@
+A dispatch system, comprising:
+a first terminal coupled to a database adapted to receive a first address and event data and to correlate the first address to a first set of location based data, wherein the first terminal is located remote from the first address;
+a second terminal having a map display unit the second terminal adapted to receive a second set of location based data from a location system based on the location of the second terminal, the second terminal adapted to transmit such second set of location based data over a communication channel to the first terminal;
+the first terminal adapted to maintain the second set of location based data in a memory,
+dependent on the second set of location based data and the event data meeting certain criteria, the first terminal adapted to transmit the first set of location based data and event data to the second terminal; and
+the second terminal further adapted to automatically input such location based data into the display unit adapted to display a map including the first address that correlates to said first set of location based data.

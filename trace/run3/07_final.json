@@ -1,0 +1,260 @@
+{
+  "product": "Google Maps Platform",
+  "domains": [
+    {
+      "domain": "developers.google.com",
+      "confidence": 0.99,
+      "rationale": "Official Google developer documentation and support hub for Google Maps Platform, including product docs, getting started guides, support pages, and API references.",
+      "source_urls": [
+        "https://developers.google.com/maps",
+        "https://developers.google.com/maps/documentation",
+        "https://developers.google.com/maps/support"
+      ]
+    },
+    {
+      "domain": "mapsplatform.google.com",
+      "confidence": 0.98,
+      "rationale": "Official Google Maps Platform marketing and product site, hosting product descriptions, blog content, support links, and pricing/contact pages.",
+      "source_urls": [
+        "https://mapsplatform.google.com/",
+        "https://mapsplatform.google.com/resources/blog/",
+        "https://mapsplatform.google.com/contact-us/"
+      ]
+    },
+    {
+      "domain": "cloud.google.com",
+      "confidence": 0.93,
+      "rationale": "Official Google Cloud domain that hosts Google Maps Platform terms, technical support guidelines, and related product/legal documentation.",
+      "source_urls": [
+        "https://cloud.google.com/maps-platform/terms",
+        "https://cloud.google.com/maps-platform/terms/other/tssg",
+        "https://cloud.google.com/blog"
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "id": "E1",
+      "label": "A first remote terminal receives an address and event data and correlates the address to location-based data using a database.",
+      "keywords": [
+        "remote terminal",
+        "address lookup database",
+        "event data correlation",
+        "location-based data",
+        "geocoding"
+      ],
+      "search_queries": [
+        "Google Maps Geocoding API address to coordinates",
+        "Geocoding API place ID address lookup",
+        "Google Maps address geocode results",
+        "Maps Platform geocode address latlng"
+      ]
+    },
+    {
+      "id": "E2",
+      "label": "A second terminal includes a map display and receives location-based data from a location system based on the second terminal's own location.",
+      "keywords": [
+        "map display unit",
+        "location system",
+        "device location data",
+        "terminal location",
+        "GPS-based data"
+      ],
+      "search_queries": [
+        "Google Maps JavaScript API map display",
+        "Maps SDK for Android device location map",
+        "Maps SDK for iOS current location map",
+        "Geolocation API location accuracy lat lng"
+      ]
+    },
+    {
+      "id": "E3",
+      "label": "The second terminal transmits its location-based data to the first terminal over a communication channel.",
+      "keywords": [
+        "transmit location data",
+        "communication channel",
+        "wireless link",
+        "send coordinates",
+        "terminal-to-terminal communication"
+      ],
+      "search_queries": [
+        "Geolocation API send location data",
+        "Maps SDK for Android transmit coordinates",
+        "Maps SDK for iOS share location data",
+        "Google Maps Platform location communication channel"
+      ]
+    },
+    {
+      "id": "E4",
+      "label": "The first terminal stores the second terminal's location-based data in memory.",
+      "keywords": [
+        "store in memory",
+        "location data storage",
+        "terminal memory",
+        "retain coordinates",
+        "data buffering"
+      ],
+      "search_queries": [
+        "Geolocation API store location data",
+        "Maps SDK for Android location memory",
+        "Maps SDK for iOS retain coordinates",
+        "Google Maps location data buffering"
+      ]
+    },
+    {
+      "id": "E5",
+      "label": "When the stored location-based data and event data satisfy specified criteria, the first terminal sends the first set of location-based data and the event data to the second terminal.",
+      "keywords": [
+        "criteria-based transmission",
+        "event-triggered dispatch",
+        "conditional send",
+        "location and event data",
+        "dispatch criteria"
+      ],
+      "search_queries": [
+        "Google Maps dispatch criteria location data",
+        "Routes API event triggered dispatch",
+        "Places API location event data",
+        "Geocoding API conditional location send"
+      ]
+    },
+    {
+      "id": "E6",
+      "label": "The second terminal automatically enters the received location-based data into the display unit to show a map that includes the first address.",
+      "keywords": [
+        "automatic input",
+        "map display",
+        "display address on map",
+        "auto-populate map",
+        "navigation display"
+      ],
+      "search_queries": [
+        "Maps JavaScript API auto display map address",
+        "Maps SDK for Android automatic map marker",
+        "Maps SDK for iOS display map location",
+        "Google Maps auto populate map address"
+      ]
+    }
+  ],
+  "urls": [
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/geocoding",
+      "title": "Geocode an address | Geocoding API",
+      "snippet": "Geocoding returns a GeocodeAddressResponse object that contains the results array of GeocodeResult objects. Each GeocodeResult object represents a single place.",
+      "score": 1.0,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Official Geocoding API guide explicitly says geocoding returns a response that maps an address to a LatLng, directly supporting address-to-location correlation using Google Maps data."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/reference/rest/v4beta/geocode.address/geocodeAddress",
+      "title": "Method: geocode.address.geocodeAddress",
+      "snippet": "This method performs an address geocode, which maps an address to a LatLng. It also provides structured information about the address.",
+      "score": 1.0,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Reference doc states the method performs an address geocode that maps an address to a LatLng and provides structured address information."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/reference/rest/v4/geocode.address",
+      "title": "REST Resource: geocode.address",
+      "snippet": "This method performs an address geocode, which maps an address to a LatLng. geocodeAddressQuery. This method performs an address geocode, which ...",
+      "score": 1.0,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "REST resource documentation for geocode.address directly describes mapping an address to LatLng, which is strong evidence for the claim's address lookup/correlation limitation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/location",
+      "title": "Location data | Maps SDK for iOS",
+      "snippet": "The location data available to an iOS device includes the current location ... The following tutorial and code sample demonstrate the use of location on a map:.",
+      "score": 0.95,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Official iOS Maps SDK location-data page; describes device current location, using location on a map, and related map display behavior. Strong evidence for receiving device-based location data, handling it in the app, and showing it on a map."
+    },
+    {
+      "url": "https://developers.google.com/maps/solutions/store-locator/best-practices",
+      "title": "Locator Plus implementation guide",
+      "snippet": "You can geocode your addresses on the server side, store the latitudes and longitudes in your database, and refresh at least every 30 days. Here is an example ...",
+      "score": 0.95,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6"
+      ],
+      "rationale": "Official Locator Plus implementation guide describes geocoding addresses on the server side, storing latitudes/longitudes in a database, identifying user location, sending directions to mobile devices, and displaying store locations on a map. This is the closest overall match to the claimed dispatch/location workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/place-autocomplete-data",
+      "title": "Place Autocomplete Data API | Maps JavaScript API",
+      "snippet": "The Place Autocomplete Data API lets you fetch place predictions programmatically, to create customized autocomplete experiences with a finer degree of control.",
+      "score": 0.95,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Official Maps JavaScript API docs for Place Autocomplete Data directly describe fetching place predictions and creating autocomplete experiences, which is strong evidence for address lookup/geocoding-style correlation and automatic entry of a selected place/address into a map UI."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/maps-service-terms",
+      "title": "Google Maps Platform Service Specific Terms",
+      "snippet": "Customer may use Google Maps Content from the Geocoding API in Customer Applications without a corresponding Google Map. 5.2 No use with a non-Google map.",
+      "score": 0.9,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5"
+      ],
+      "rationale": "Official service terms explicitly mention Geocoding API, caching, and use of Google Maps content in customer applications; useful supporting evidence for geocoding/address lookup and related data handling/dispatch workflow."
+    },
+    {
+      "url": "https://cloud.google.com/blog/topics/inside-google-cloud/special-delivery-google-maps-apis",
+      "title": "Special delivery with Google Maps APIs",
+      "snippet": "Using Google Maps, honestbee created a web-based map that shows the locations of drivers and their pickup and dropoff destinations. The company ...",
+      "score": 0.9,
+      "matched_elements": [
+        "E2",
+        "E5"
+      ],
+      "rationale": "Official Google Cloud blog case study describing dispatchers using Google Maps APIs to match drivers with orders/customers, show driver locations on a web-based map, and automate dispatching. Strongly supports map display plus criteria-based dispatch behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/current-place-tutorial",
+      "title": "Select Current Place and Show Details on a Map",
+      "snippet": "This tutorial demonstrates building an iOS app that retrieves the device's current location, identifies likely locations, prompts the user to select the best ...",
+      "score": 0.9,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Tutorial for retrieving the device's current location, identifying likely places, and showing details on a map. Closely matches device-location input and automatic map display of a selected place."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geolocation/overview",
+      "title": "Geolocation API overview",
+      "snippet": "It returns latitude/longitude coordinates and a radius indicating the accuracy of the result for each valid input. Note: To get device location ...",
+      "score": 0.9,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "rationale": "Official Geolocation API overview explains determining a device's latitude/longitude from cell tower and Wi‑Fi data and sending device data to the API, which supports device-location acquisition and transmission/storage aspects of the claim."
+    }
+  ]
+}

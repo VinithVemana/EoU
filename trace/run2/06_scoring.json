@@ -1,0 +1,3024 @@
+{
+  "top_k": 10,
+  "scored_count": 281,
+  "all_scored": [
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding",
+      "title": "Google Maps Platform Documentation | Geocoding API",
+      "snippet": "Get the geographic coordinates for an address. Reverse address lookup. Get the address for a set of lat/lng coordinates.",
+      "score": 1.0,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Official Geocoding API documentation explicitly says it gets geographic coordinates for an address and supports address lookup/geocoding, directly matching address-to-location correlation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/guides-v3/overview",
+      "title": "Geocoding API overview",
+      "snippet": "The Geocoding API is a service that accepts a place as an address, latitude and longitude coordinates, or Place ID. It converts the address into latitude ...",
+      "score": 1.0,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Geocoding API overview states the service accepts an address and converts it into latitude/longitude, which is direct evidence for correlating an address to location-based data."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/guides-v3/start",
+      "title": "Get Started with the Geocoding API v3",
+      "snippet": "The Geocoding API is a service that provides geocoding and reverse geocoding of addresses. This service is also available as part of the client-side Google Maps ...",
+      "score": 1.0,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Official getting-started page says the Geocoding API provides geocoding and reverse geocoding of addresses, directly supporting the address lookup limitation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/start-v4",
+      "title": "Get Started with the Geocoding API v4",
+      "snippet": "You can also use the Geocoding API to find the address for a given place ID and to retrieve detailed information about various destinations using the ...",
+      "score": 1.0,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Geocoding API v4 getting started page says the API can find an address for a place ID and retrieve destination details, directly evidencing geocoding/address correlation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/geocoding",
+      "title": "Geocode an address | Geocoding API",
+      "snippet": "Geocoding translates an address into a location on a map. When you geocode an address, the response contains the: Place ID of the location; Latitude and ...",
+      "score": 1.0,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Canonical Geocoding API doc explicitly says geocoding translates an address into a location on a map and returns place ID, latitude, and longitude, directly matching address-to-location correlation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/geocoding-v4-overview",
+      "title": "Geocoding API v4 overview",
+      "snippet": "The Geocoding API is a service that accepts a place as an address, latitude and longitude coordinates, or Place ID. It converts the address into latitude ...",
+      "score": 1.0,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Official overview states the Geocoding API accepts an address and converts it into latitude/longitude, directly evidencing address lookup and correlation to location data."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/driver-sdk/on-demand",
+      "title": "Driver SDK on-demand trips overview",
+      "snippet": "The Driver SDK communicates vehicle location and trip updates to Fleet Engine so that Fleet Engine can track the vehicles and their assigned trips.",
+      "score": 0.95,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6"
+      ],
+      "rationale": "Official overview for Driver SDK says the driver app sends location updates and latitude/longitude to Fleet Engine, supports route/destination updates, and lets drivers navigate in a single app with navigation/map display behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/location",
+      "title": "Location Data | Maps SDK for Android",
+      "snippet": "The My Location layer provides a simple way to display a device's location on the map. It does not provide data. The Google Play services Location API is ...",
+      "score": 0.9,
+      "matched_elements": [
+        "E2",
+        "E4"
+      ],
+      "rationale": "Official Android Maps SDK page on location data and the My Location layer; supports device-location-based map display and location handling/storage context."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/driver-sdk/navigation",
+      "title": "Navigation SDK overview",
+      "snippet": "Reliable turn-by-turn navigation instructions powered by Google Maps. Customized routes based on the latitude/longitude coordinates provided by the Driver SDK.",
+      "score": 0.9,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Official Navigation SDK docs describe a mobile app with map/navigation display, route and location updates from the Driver SDK, and sending latitude/longitude location updates to Fleet Engine."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/journey-sharing",
+      "title": "Maps Platform - Mobility Services",
+      "snippet": "Share order location and progress with consumers to help them monitor the status of their ride, food delivery, package delivery or service visit.",
+      "score": 0.9,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6"
+      ],
+      "rationale": "Official Mobility Services overview for Consumer SDKs describes sharing order/ride location and progress, real-time location updates from Fleet Engine, and consumer apps showing trip/task progress on a map. Strong evidence for device location transmission, server-side handling, and automatic map updates, though not the address-correlation step."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/driver-sdk/on-demand/ios/vehicle-ready",
+      "title": "Get the vehicle ready | Driver SDK for on-demand trips",
+      "snippet": "The Navigation SDK provides location updates to the Driver SDK through the GMSRoadSnappedLocationProvider class. To receive those updates, you must set up the ...",
+      "score": 0.9,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E5"
+      ],
+      "rationale": "Describes enabling location updates, sending regular vehicle updates to Fleet Engine, event listeners for update success/failure, and backend communication tied to vehicle state."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/how-use-distance-matrix-api/",
+      "title": "How to Use the Distance Matrix API",
+      "snippet": "In this post, we'll show you how to use the Distance Matrix API using a common use case–technician dispatching.",
+      "score": 0.9,
+      "matched_elements": [
+        "E1",
+        "E5"
+      ],
+      "rationale": "Official Google Maps Platform blog post explicitly says it is about a common use case of technician dispatching and using the Distance Matrix API to calculate travel distance/time for dispatch decisions, which aligns with address/location correlation and criteria-based dispatch."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/examples/my-location",
+      "title": "Show My Location | Maps SDK for Android",
+      "snippet": "This example shows how to enable the My Location layer and demonstrates the My Location button to show the device's current position.",
+      "score": 0.85,
+      "matched_elements": [
+        "E2",
+        "E4"
+      ],
+      "rationale": "Shows enabling the My Location layer and displaying the device's current position on a map, directly supporting device-location/map-display limitations."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/android-sdk/overview",
+      "title": "Navigation SDK overview - Android",
+      "snippet": "The Navigation SDK lets you seamlessly integrate the Google Maps turn-by-turn navigation experience directly into your mobile applications.",
+      "score": 0.85,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Navigation SDK overview says the SDK integrates turn-by-turn navigation directly into mobile apps and uses Google Maps map elements and location updates."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/journey-sharing/on-demand/ios/auth-sdk",
+      "title": "Maps Platform - Get authorization tokens",
+      "snippet": "The GMTDAuthorization protocol fetches JSON Web tokens at location update time based on the GMTD AuthorizationContext object.",
+      "score": 0.85,
+      "matched_elements": [
+        "E3",
+        "E4",
+        "E5"
+      ],
+      "rationale": "Documentation states the backend generates JWTs and passes them to clients for server interactions, and clients fetch/reuse/refresh tokens for ongoing access. This supports client-to-server communication and server-side retention/authorization around location updates, though it is not a direct map/address feature."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/journey-sharing/on-demand/android/auth-sdk",
+      "title": "Get authorization tokens | Google Maps platform",
+      "snippet": "The AuthTokenFactory class generates authorization tokens at location update time. The SDK must package the tokens with the update information to send to Fleet ...",
+      "score": 0.85,
+      "matched_elements": [
+        "E3",
+        "E4",
+        "E5"
+      ],
+      "rationale": "Explains authorization tokens generated by the backend and packaged with update information sent to Fleet Engine. Good evidence for transmitting client update data to a server and conditional access to trip/vehicle data."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/driver-sdk/scheduled",
+      "title": "Driver SDK scheduled tasks overview",
+      "snippet": "At its core, the SDK uses an event listener to send location updates and latitude/longitude coordinates, along with the current route segment and destination ...",
+      "score": 0.85,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6"
+      ],
+      "rationale": "Scheduled-tasks Driver SDK overview states the SDK sends location updates and coordinates with route segment and destination to Fleet Engine and supports driver navigation in a single app."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/distance-matrix/overview",
+      "title": "Distance Matrix API (Legacy) overview",
+      "snippet": "With the Distance Matrix API (Legacy), you can provide travel distance and time for a matrix of origins and destinations. You can specify several options ...",
+      "score": 0.85,
+      "matched_elements": [
+        "E1",
+        "E5"
+      ],
+      "rationale": "Canonical API overview states the Distance Matrix API provides travel distance and time between origins and destinations and is ideal for logistics/assigning workers based on travel time and distance, supporting dispatch-style criteria and location correlation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/distance-matrix/distance-matrix",
+      "title": "Distance Matrix API (Legacy) request and response",
+      "snippet": "The Google Maps Distance Matrix API calculates travel distance and time between multiple origins and destinations. Requests require origins and destinations ...",
+      "score": 0.85,
+      "matched_elements": [
+        "E1",
+        "E5"
+      ],
+      "rationale": "Official request/response documentation explains the API calculates travel distance and time between origins and destinations, which is directly relevant to correlating addresses to location-based data and using that data for dispatch criteria."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/current-place-tutorial",
+      "title": "Select Current Place and Show Details on a Map",
+      "snippet": "This tutorial demonstrates building an Android app to find the device's location and display nearby places using the Maps SDK, Places SDK, and Fused Location ...",
+      "score": 0.8,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Tutorial uses the device's location with Maps SDK and Fused Location Provider to display nearby places, supporting location-based map behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/overview",
+      "title": "Overview | Maps SDK for iOS",
+      "snippet": "The SDK automatically handles access to the Google Maps servers, map display, and response to user gestures such as clicks and drags. You can also add markers, ...",
+      "score": 0.8,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E6"
+      ],
+      "rationale": "iOS SDK overview states the SDK handles map display and user/location interactions; supports a terminal with map display and location-driven map behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/android-sdk/reference/com/google/android/gms/maps/GoogleMap",
+      "title": "GoogleMap | Navigation SDK for Android",
+      "snippet": "You can use the map's camera to set parameters such as location, zoom level, tilt angle, and bearing. For more information, see Camera and View. Developer Guide.",
+      "score": 0.8,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Reference documentation for GoogleMap in the Navigation SDK for Android, supporting the map display unit limitation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/ios-sdk/reference/objc/Classes/GMSNavigator",
+      "title": "GoogleNavigation Framework Reference | Navigation SDK ...",
+      "snippet": "This is the main class of the Google Navigation SDK for iOS and provides methods for controlling navigation to a destination and accessing route and progress ...",
+      "score": 0.8,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Reference page for the main iOS Navigation SDK class controlling navigation to a destination and accessing route/progress data, which implies map/navigation display functionality."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/journey-sharing/on-demand/android/init-sdk",
+      "title": "Initialize the Consumer SDK | Google Maps platform",
+      "snippet": "Before initializing the Consumer SDK, initialize Maps SDK and specify your preferred renderer to ensure proper map rendering. Secure communication is handled ...",
+      "score": 0.8,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "rationale": "States the Consumer SDK initializes with a provider ID and AuthTokenFactory, and that Maps SDK is initialized first for proper map rendering. Supports a map display unit on the client and authenticated communication with backend services.; Duplicate of the Consumer SDK initialization page; supports map rendering plus authenticated client-server communication for location updates."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/fleet-engine/essentials/tasks-intro",
+      "title": "Scheduled tasks | Fleet Engine Essentials",
+      "snippet": "The map is a drop-in replacement for a standard google.maps.Map object. Your client should authenticate your end users and use the Delivery ...",
+      "score": 0.8,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6"
+      ],
+      "rationale": "Describes scheduled tasks, vehicle stops, real-time progress sharing with consumers, and consumer SDKs for tracking. Strongly analogous to dispatching location/task data from backend to client and displaying it on a map."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/driver-sdk/on-demand/android/migration-guide-v4",
+      "title": "Android Driver SDK 4.0 Migration Guide",
+      "snippet": "When the driver's shift is finished, disable location updates and mark the vehicle as offline by calling NavigationVehicleReporter.disableLocationTracking() .",
+      "score": 0.8,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "rationale": "Migration guide explains NavigationVehicleReporter methods for enabling/disabling location updates and the SDK initialization around navigation/driver reporting."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/driver-sdk/on-demand/android/disable-location",
+      "title": "Disable location updates | Driver SDK for on-demand trips",
+      "snippet": "Vehicles can be marked as OFFLINE before or after enabling/disabling location updates, and the Driver SDK immediately communicates this status to Fleet Engine.",
+      "score": 0.8,
+      "matched_elements": [
+        "E3",
+        "E4"
+      ],
+      "rationale": "Official doc says disabling location updates sends a final update to Fleet Engine and marks the vehicle offline, showing location-data transmission and retention/handling in backend systems."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/routes",
+      "title": "Google Maps Platform Documentation | Routes API",
+      "snippet": "Compute Route Matrix. Calculate travel times and distances for multiple destinations for up to 625 route elements. Learn more Set up Compute ...",
+      "score": 0.8,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Routes API documentation includes Compute Route Matrix for calculating travel times and distances for multiple destinations, which is strong supporting evidence for conditional dispatch/route selection based on location data."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/other/maps-services-summary?hl=fr",
+      "title": "Google Maps | Google Cloud Platform Terms",
+      "snippet": "map rendering toolkits that display Google Maps. Features include: Display road and satellite imagery. Overlay markers, polylines, and polygons on the map.",
+      "score": 0.75,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Official Google Maps services summary explicitly mentions geocoding/address conversion and location based on cell tower and wifi node information, plus native toolkits for web/Android/iOS and map rendering toolkits."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/other/maps-services-summary?hl=ja",
+      "title": "Google Maps | Google Cloud Platform Terms",
+      "snippet": "Overlay markers, polylines, and polygons on the map. Display Street View imagery. Change the look and feel of the map. Convenience functions to ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Same official services summary as above; describes address-to-geographic-coordinate conversion and native map toolkits for web, Android, and iOS."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/geocoding",
+      "title": "Geocoding Service | Maps JavaScript API",
+      "snippet": "The Maps JavaScript API provides a Geocoder class for geocoding and reverse geocoding dynamically from user input.",
+      "score": 0.75,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Maps JavaScript API Geocoder class provides geocoding and reverse geocoding dynamically from user input, supporting address-to-location lookup on the client side."
+    },
+    {
+      "url": "https://developers.google.com/maps/architecture/geocoding-address-validation",
+      "title": "Building location validation capability using Google Maps ...",
+      "snippet": "This document helps you choose between the two primary location validation services - Address Validation API and the Geocoding API.",
+      "score": 0.75,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Architecture guidance explains using Geocoding API and Address Validation to validate and convert addresses into coordinates, which is strong supporting evidence for address-to-location correlation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/search-for-destinations",
+      "title": "Search for destinations | Geocoding API",
+      "snippet": "The SearchDestinations method of the Geocoding API lets you retrieve detailed information about various destinations based on different input criteria, such as ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Geocoding API v4 destination search page describes retrieving detailed information about destinations based on input criteria, a close analogue to correlating an address to location-based data."
+    },
+    {
+      "url": "https://mapsplatform.google.com/maps-products/address-validation/",
+      "title": "Discover Address Validation",
+      "snippet": "Geocoding API focuses on identifying a real-world location based on a given input, but in doing so may identify a location that is different than the input ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Product page explains Address Validation and Geocoding as ways to identify real-world locations from address input, supporting the address lookup/correlation limitation."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/address-geocoding-in-google-maps-apis/",
+      "title": "Address Geocoding in the Google Maps APIs",
+      "snippet": "The Google Maps APIs have several services that you can use to convert addresses into coordinates - the Geocoding API, the Place Autocomplete service in Places ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Blog post states Google Maps APIs convert addresses into coordinates using Geocoding and related services, which is strong supporting evidence for the first-terminal lookup function."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/the-next-generation-of-geocoding-master-the-last-meter-with-rich-hyperlocal-destination-details/",
+      "title": "The next generation of geocoding: Master the 'last-meter ...",
+      "snippet": "To solve this “last-meter” gap, we're launching the Geocoding Destinations endpoint available in the Geocoding API, now in Preview.",
+      "score": 0.75,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E3"
+      ],
+      "rationale": "Blog post about Geocoding Destinations and hyperlocal destination details ties geocoding to location data and mentions device/location-oriented use cases, making it relevant to address lookup and location-data transmission concepts."
+    },
+    {
+      "url": "https://mapsplatform.google.com/lp/maps-apis/",
+      "title": "Maps API",
+      "snippet": "Have more geospatial needs? Try our Routes, Places, and Environmental products, which allow you to optimize routing, drive sustainability, and add place data, ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E5",
+        "E6"
+      ],
+      "rationale": "Official product page for Maps APIs; describes map products, immersive maps, and place data, which supports map display and map-based dispatch/navigation behavior, though it does not directly describe the full address-to-device workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/best-practices",
+      "title": "Geocoding Addresses Best Practices",
+      "snippet": "Geocoding converts addresses into geographical coordinates (latitude and longitude) for map placement. · Use the Geocoding API for complete, unambiguous ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Best-practices page explains geocoding converts addresses into geographic coordinates for map placement, supporting the address-to-location correlation limitation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/android-sdk/legacy/place-details",
+      "title": "Place Details | Places SDK for Android",
+      "snippet": "The Places SDK for Android provides your app with rich information about places, including the place's name and address, the geographical location specified.",
+      "score": 0.75,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E4"
+      ],
+      "rationale": "Android Places SDK page says it provides place name, address, and geographical location; this supports address/location data retrieval and a mobile terminal context with map-related display behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geolocation/overview",
+      "title": "Geolocation API overview",
+      "snippet": "The Geolocation API is a service that accepts an HTTPS request with the cell tower and Wi-Fi access points that a mobile client can detect.",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Geolocation API overview states it determines a device's latitude and longitude from device data and returns location information via HTTPS request, supporting device-location-based data acquisition and transmission."
+    },
+    {
+      "url": "https://mapsplatform.google.com/solutions/display-the-ideal-location/",
+      "title": "Display the Ideal Location & Place Details",
+      "snippet": "Create interactive maps with place details to help customers find and visit the nearest store, ATM, restaurant, auto shop, medical office, and more.",
+      "score": 0.75,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E6"
+      ],
+      "rationale": "Solution page describes interactive maps with place details to help users find locations, which aligns with map display and showing an address/location on a map."
+    },
+    {
+      "url": "https://cloud.google.com/customers/simply-delivery",
+      "title": "SimplyDelivery Case Study",
+      "snippet": "Place Details and the Geocoding API translate the geographic coordinates of delivery destinations into a detailed visual map. The driver app also suggests ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Case study says Place Details and Geocoding API translate delivery destination coordinates into a detailed visual map, closely matching address/location lookup and automatic map display for delivery use."
+    },
+    {
+      "url": "https://docs.cloud.google.com/sap/docs/abap-sdk/btp/latest/reference/googcl_geocode",
+      "title": "Class /GOOG/CL_GEOCODE | SAP on Google Cloud",
+      "snippet": "Description: Google Maps Platform Geocode API. For general information about a class in ABAP SDK for Google Cloud, see API client stub. Types. Type, Description ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Reference page for Google Maps Platform Geocode API directly supports address-to-location conversion via the Geocode API."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/android-sdk/route",
+      "title": "Navigate a single-destination route - Android",
+      "snippet": "Follow this guide to plot a route within your app using the Navigation SDK for Android. This guide assumes you have already integrated the Navigation SDK into ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Guide for plotting a route within an app using the Navigation SDK; directly relates to loading navigation/map content into the display."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/current-place-tutorial",
+      "title": "Select Current Place and Show Details on a Map",
+      "snippet": "This tutorial demonstrates building an iOS app that retrieves the device's current location, identifies likely locations, prompts the user to select the best ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Tutorial retrieves the device's current location, identifies likely locations, and shows details on a map. This is strong evidence for device-location-based data feeding a map display and automatic map updates, though not the dispatch/event criteria."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/start",
+      "title": "Maps SDK for Android Quickstart",
+      "snippet": "Start a new Google Maps project for your Android app today. Here's how to find everything you'll need from installing the sdk to building and running your ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Official Maps SDK for Android quickstart and docs for adding a map, location data, and reverse geocoding; supports a terminal with a map display that can automatically show map/location data."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/map-with-marker",
+      "title": "Add a Map with a Marker - iOS",
+      "snippet": "This tutorial shows how to add a Google map with a marker to your iOS app. It suits people with a beginner or intermediate knowledge of Swift or Objective-C.",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Official iOS tutorial for adding a Google map with a marker to an app, which is strong evidence for a map display unit and automatic map presentation on the device."
+    },
+    {
+      "url": "https://cloud.google.com/customers/spoke",
+      "title": "Spoke case study",
+      "snippet": "\"With the Navigation SDK, drivers get turn-by-turn directions, lane guidance, and real-time traffic updates,\" says Megan Murphy, VP of Product for Spoke ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Case study says drivers get turn-by-turn directions in the app, can see where they are and where they're going, and references navigation/location data integrated into the product workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/routes/understand-route-response",
+      "title": "Review the route response | Routes API",
+      "snippet": "The ComputeRoutes method infers the location and distance units from the origin waypoint. So for a routing request in the US, the API infers en-US language and ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Route response docs describe route location inference and localized values, supporting the idea of route/location data being computed and returned for downstream dispatch or navigation decisions."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/ios-sdk/route-customizations",
+      "title": "Plan a route | Navigation SDK for iOS",
+      "snippet": "Minimize time to destination: A service dispatch operation might want to minimize the time it takes to get operators to a job request. Lower costs and improve ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E5",
+        "E6"
+      ],
+      "rationale": "Navigation SDK route customization docs discuss service dispatch operations and minimizing time to destination, which is closely related to dispatch criteria and automatically presenting navigation/map guidance to a driver."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/reference/3.61/places-widget",
+      "title": "Places Widgets | Maps JavaScript API",
+      "snippet": "This event is fired when a place is selected from the list. Contains a Place object containing the ID, location, and viewport of the selected place.",
+      "score": 0.75,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Official Maps JavaScript API reference for Places Widgets; describes selecting a place and receiving its ID, location, and viewport, which supports address/place lookup and automatically displaying map content for a selected location."
+    },
+    {
+      "url": "https://mapsplatform.google.com/solutions/transportation-and-logistics/",
+      "title": "Solutions for Transportation & Logistics",
+      "snippet": "Power rides and deliveries with detailed geospatial data and predictable pricing. All while dynamically tracking fleets, assets, and devices.",
+      "score": 0.75,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Official Google Maps Platform solution page for transportation/logistics and fleet tracking; discusses dynamically tracking fleets, assets, devices and route optimization/dispatch-like operations, which is strong supporting evidence for criteria-based dispatch and sending route/location data."
+    },
+    {
+      "url": "https://cloud.google.com/customers/beep-saude",
+      "title": "Beep Saúde case study",
+      "snippet": "With Google Maps Platform Route Optimization powering its logistics, Beep Saúde scaled home healthcare visits across Brazil.",
+      "score": 0.75,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Google Cloud case study describing Google Maps Platform Route Optimization powering logistics, faster dispatch decisions, and integrated routing with internal platform; supports event/criteria-based dispatch and correlated location/routing data."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/android-sdk/customize-route",
+      "title": "Plan a route | Navigation SDK for Android",
+      "snippet": "You can plan a route by creating a route token and then passing it to the Navigation SDK, as described in the following steps.",
+      "score": 0.75,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Navigation SDK documentation for planning a route and passing a route token into the SDK, which is strong evidence that the device automatically loads received route/location data into the navigation/map display.; Navigation SDK route planning docs show passing route tokens into the SDK so the device can render navigation on the map, closely matching automatic loading of location/route data into the display unit."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/reference/map",
+      "title": "Maps JavaScript API | Google for Developers",
+      "snippet": "MapElement is an HTMLElement subclass for rendering maps. After loading the maps library, a map can be created in HTML.",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Official Maps JavaScript API reference for creating/rendering maps in the browser; supports a terminal with a map display and automatic map rendering/update behavior."
+    },
+    {
+      "url": "https://cloud.google.com/archive/maps-platform/terms/maps-service-terms-20250331",
+      "title": "Google Maps Platform Service Specific Terms",
+      "snippet": "Customer can temporarily cache latitude (lat) and longitude (lng) values from the Navigation SDK for up to 30 consecutive calendar days, after ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Official service terms describe Geolocation API and Geocoding API caching latitude/longitude, and Navigation SDK caching lat/lng, which supports device location data being sent/stored and used with maps/navigation. Also references Google Maps Content used in customer applications without a corresponding Google Map."
+    },
+    {
+      "url": "https://cloud.google.com/terms/maps-platform/eea/maps-service-terms?hl=fr",
+      "title": "Google Maps Platform EEA Service Specific Terms",
+      "snippet": "Customer may not use (in whole or in part) any addresses from the iOS Geocoder within the Map SDK for iOS With any Map. 10. Navigation SDK. 10.1 Caching.",
+      "score": 0.75,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Official Maps Platform terms discuss Geolocation/Geocoding/Directions caching of lat/lng and real-time navigation experiences, supporting location-based data transmission/storage and map display behavior."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/other/maps-services-summary?hl=id",
+      "title": "Google Maps | Google Cloud Platform Terms",
+      "snippet": "Maps development kits (\"Maps API\"). map rendering toolkits that display Google Maps. Features include: Display road and satellite imagery. Overlay markers, ...",
+      "score": 0.75,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E6"
+      ],
+      "rationale": "Services summary states Web Services convert addresses into geographic coordinates, and Geolocation API uses cell tower and Wi‑Fi node information; also describes map rendering toolkits that display Google Maps. This is strong evidence for address-to-location correlation and map display."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/configure-map",
+      "title": "Configure a map | Maps SDK for iOS",
+      "snippet": "The Maps SDK for iOS lets you display the public transit network of a city on your map using the transitEnabled method. When the traffic layer is enabled ...",
+      "score": 0.7,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Documentation for configuring an iOS map, including traffic/transit and map display features; relevant to map display unit and automatic map presentation context."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/enhance-driver-awareness-and-engagement-with-real-time-disruptions-in-navigation-sdk/",
+      "title": "Enhance driver awareness and engagement with real-time ...",
+      "snippet": "Navigation SDK empowers developers to bring the Google Maps navigation experience directly into their mobile apps and control the full end ...",
+      "score": 0.7,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E6"
+      ],
+      "rationale": "Blog post about Navigation SDK and real-time disruptions in navigation apps; discusses bringing Google Maps navigation into mobile apps and updating the navigation experience in-app."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/location",
+      "title": "Location data | Maps SDK for iOS",
+      "snippet": "The location data available to an iOS device includes the current location of the device — pinpointed using a combination of technologies — the direction and ...",
+      "score": 0.7,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Official iOS Maps SDK location-data page explains that an iOS device has current location data determined by technologies such as GPS and related sensors. Good support for receiving location-based data from the terminal's own location system."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/ios-sdk/legacy/current-place",
+      "title": "Current Place | Places SDK for iOS",
+      "snippet": "Using the Places SDK for iOS, you can discover the place where the device is currently located. That is, the place at the device's currently-reported location.",
+      "score": 0.7,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E6"
+      ],
+      "rationale": "States the SDK can discover the place where the device is currently located. Supports device-location-based data and map-related display behavior, though it is more about place discovery than dispatch."
+    },
+    {
+      "url": "https://cloud.google.com/customers/alto-maps",
+      "title": "Alto Case study",
+      "snippet": "With access to Google Maps Platform location data, drivers can more easily find the right spot sooner. \"Nine times out of 10, our location data was spot-on ...",
+      "score": 0.7,
+      "matched_elements": [
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Case study describes consolidating navigation and ride management in a single app and using precise location data so drivers can see where they're going and get there faster."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/routes/overview",
+      "title": "Overview | Maps JavaScript API",
+      "snippet": "Distance matrix on a map. The RouteMatrix class returns distances and travel times for a matrix of routes between different origin and destination locations.",
+      "score": 0.7,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Maps JavaScript API routes overview describes RouteMatrix returning distances and travel times between origins and destinations, supporting dispatch optimization based on location-based criteria."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/marker",
+      "title": "Markers | Maps SDK for iOS",
+      "snippet": "Markers indicate single locations on the map. By default, markers use a standard icon that has the common Google Maps look and feel.",
+      "score": 0.65,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Markers indicate locations on the map; supports map display of location-based data, though not the dispatch/criteria aspects."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/android-sdk/faq",
+      "title": "Navigation SDK FAQ",
+      "snippet": "After navigation starts and the Navigation SDK receives a GPS signal at least once, it will display a \"Searching for GPS...\" message in the following situations ...",
+      "score": 0.65,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "FAQ includes navigation map interactions and GPS/location behavior, supporting a device with map display and location-based updates."
+    },
+    {
+      "url": "https://developers.google.com/maps/solutions/store-locator/best-practices",
+      "title": "Locator Plus implementation guide",
+      "snippet": "Use Google Maps Platform to create immersive location experiences and make better business decisions with accurate real-time data & dynamic imagery.",
+      "score": 0.65,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Locator Plus guide covers store/location lookup, geocoding, Places, and map-based location experiences; it is adjacent evidence for address-to-location correlation and map display of locations."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/reference/3.63/route",
+      "title": "Route | Maps JavaScript API",
+      "snippet": "The travel distance of the route, in meters. durationMillis. Type: number optional. The length of time needed to navigate the route in milliseconds.",
+      "score": 0.65,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Reference page for route objects includes travel distance and duration fields, which is supporting evidence for route-based dispatch and map/navigation behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/routes/shorter-distance-routes",
+      "title": "Get a shorter distance route | Routes API",
+      "snippet": "The Routes API now offers a \"shorter distance route\" option, which prioritizes minimizing travel distance over factors like speed or driving comfort. · When ...",
+      "score": 0.65,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Routes API page about choosing shorter distance routes supports conditional route selection based on travel criteria, relevant to dispatch optimization."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/advanced-markers/add-marker",
+      "title": "Add a marker to a map | Maps JavaScript API",
+      "snippet": "Use markers to display single locations on a map. This page shows how to add a marker to a map programmatically, and by using custom HTML elements.",
+      "score": 0.6,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "JavaScript API page on adding markers to a map; supports map display of location data, but only adjacent to the claim's dispatch flow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/overview",
+      "title": "Maps SDK for Android overview",
+      "snippet": "With the Maps SDK for Android, add maps to your Android app including Wear OS apps using Google Maps data, map displays, and map gesture responses.",
+      "score": 0.6,
+      "matched_elements": [
+        "E2",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Overview says Maps SDK for Android adds maps, map displays, and gesture responses; useful supporting evidence for a terminal with a map display and map updates."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/cowboy-pedaling-toward-faster-cleaner-travel-with-the-navigation-sdk/",
+      "title": "Cowboy: Pedaling toward faster, cleaner travel with the ...",
+      "snippet": "We became a trusted tester of the Navigation SDK for Android and iOS and have tested the integration and other Google Maps Platform features ...",
+      "score": 0.6,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Customer story about integrating the Navigation SDK into Android and iOS apps, supporting mobile map/navigation display and location transmission behavior."
+    },
+    {
+      "url": "https://developers.google.com/codelabs/maps-platform/full-stack-store-locator",
+      "title": "Build a full stack store locator with Google Maps Platform ...",
+      "snippet": "In this codelab, you will create a locator that draws from a live data feed of specialized locations and helps the user find the location ...",
+      "score": 0.6,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Codelab builds a locator using a backend/database and map display, with Place Autocomplete and finding locations from a starting point, which is close to address lookup and map rendering."
+    },
+    {
+      "url": "https://developers.google.com/codelabs/maps-platform/google-maps-simple-store-locator",
+      "title": "Build a simple store locator with Google Maps Platform ...",
+      "snippet": "What you'll do · Display a map with a set of store locations and information stored in GeoJSON format. · Customize markers and the map itself.",
+      "score": 0.6,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Codelab explicitly includes a map with store locations, GeoJSON data, Place Autocomplete, and identifying the closest location to a user-supplied starting point."
+    },
+    {
+      "url": "https://mapsplatform.google.com/solutions/offer-efficient-routes/",
+      "title": "Route Optimization & Real-Time Traffic",
+      "snippet": "Utilize Google Maps Platform route optimization tools for more efficient trips with real-time traffic, eco-friendly routing, and toll information.",
+      "score": 0.6,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Solution page for route optimization and real-time traffic is related to dispatching and route selection, though it is more marketing-oriented than direct product behavior."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/plan-efficient-routes-for-your-fleet-route-optimization-api-is-now-generally/",
+      "title": "Plan efficient routes for your fleet: Route Optimization API is ...",
+      "snippet": "You can optimize for objectives such as travel efficiency measured in travel time and distance, on time arrivals per defined time window ...",
+      "score": 0.6,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Blog post discusses optimizing fleet routes for efficiency, including travel time and on-time arrivals, which is adjacent evidence for criteria-based dispatch decisions."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/circuit-navigating-toward-efficient-last-mile-delivery-with-google-maps-platform/",
+      "title": "Spoke: Navigating toward efficient last-mile delivery with ...",
+      "snippet": "We're now also implementing the Routes API to factor in live traffic for the entire journey, giving recipients further along the route even more ...",
+      "score": 0.6,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Blog post about last-mile delivery and live traffic route planning is relevant to dispatch and route optimization, though not directly about the claim's terminal-to-server data flow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/configure-map",
+      "title": "Configure a map | Maps SDK for Android",
+      "snippet": "This document describes how to configure a map that was added to an Android app using the Maps SDK for Android.",
+      "score": 0.55,
+      "matched_elements": [
+        "E2",
+        "E4",
+        "E6"
+      ],
+      "rationale": "General Android map configuration page; supports map display and map behavior, but does not directly address location transmission or dispatch criteria."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/making-navigation-sdks-more-accessible-with-new-pricing/",
+      "title": "Making Navigation SDKs more accessible with new pricing",
+      "snippet": "Starting today, we're rolling out new pricing for our Navigation SDKs, ensuring even more businesses can build helpful experiences with our geospatial data.",
+      "score": 0.55,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Blog post about Navigation SDKs for mobile apps; mentions integrating Google Maps and related navigation experiences, which is adjacent support for map display and location updates."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/ios-sdk/legacy/place-details",
+      "title": "Place Details | Places SDK for iOS",
+      "snippet": "The Places SDK for iOS provides your app with rich information about places, including the place's name and address, the geographical location specified as ...",
+      "score": 0.55,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Place Details provides rich information about places including name, address, and geographical location. This is adjacent evidence for address/location correlation and map display, but not the dispatch workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/ios-sdk/details-place",
+      "title": "Place Details (New) | Places SDK for iOS",
+      "snippet": "The Places SDK for iOS (New) allows you to retrieve detailed information about places using their unique place IDs, including name, address, location, and more.",
+      "score": 0.55,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "New Place Details docs say the SDK retrieves detailed information about places including name, address, and location. Useful supporting evidence for correlating an address to location-based data and displaying it on a map."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/how-improve-delivery-and-ecommerce-experience-google-maps-platform/",
+      "title": "How to improve the delivery and ecommerce experience ...",
+      "snippet": "Use Directions API to provide turn-by-turn directions with real-time traffic for your delivery driver or to predict the duration of future ...",
+      "score": 0.55,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Blog post mentions using Directions API for delivery drivers and real-time traffic, which supports dispatch/route optimization use cases."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/ensuring-fast-reliable-deliveries-customers-google-maps-platform/",
+      "title": "Ensuring fast, reliable deliveries for customers with ...",
+      "snippet": "We now provide a streamlined and highly flexible last-mile delivery service running on Google Maps Platform, built to handle the fluctuations in demand that ...",
+      "score": 0.55,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Delivery-focused blog post about Google Maps Platform for last-mile logistics is relevant to dispatching and route-based decision making."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/how-line-go-enables-smooth-localized-ride-hailing-with-google-maps-platform/",
+      "title": "How LINE GO enables smooth, localized ride-hailing with ...",
+      "snippet": "We've now reduced dispatch issues resulting from imprecise ETA calculations for routes involving viaducts or bridges by 90%, enhancing our ...",
+      "score": 0.55,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Ride-hailing dispatch article discusses reducing dispatch issues and ETA calculations, which is adjacent evidence for dispatch criteria based on location/route data."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/overview",
+      "title": "Overview | Maps JavaScript API",
+      "snippet": "Add customizable markers to indicate locations on a map. Use the Places library to get location data for over 200 million places. Customize the map's style and ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Maps JavaScript API overview says it supports customizable markers and the Places library for location data, indicating map display and location-based map rendering features relevant to the second terminal/display limitation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/advanced-markers/overview",
+      "title": "Markers overview | Maps JavaScript API",
+      "snippet": "Advanced markers offer highly performant and customizable options for displaying single locations on Google Maps, including custom HTML and CSS for unique ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Documentation for advanced markers on Google Maps shows map display customization and marker rendering on a map, supporting the map display unit aspect."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/advanced-markers/basic-customization",
+      "title": "Basic marker customization | Maps JavaScript API",
+      "snippet": "This guide demonstrates how to customize advanced markers on Google Maps using the AdvancedMarkerElement and PinElement classes. · You can customize markers by ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Explains customizing advanced markers on Google Maps, which is relevant to the map display unit and map presentation on the second terminal."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/advanced-markers/html-markers",
+      "title": "Create markers with HTML and CSS | Maps JavaScript API",
+      "snippet": "With advanced markers you can use custom HTML and CSS to create markers with high visual impact, that can feature interactivity and animation.",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Describes creating markers with HTML/CSS on Google Maps, supporting the existence of a map display unit and interactive map rendering."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/advanced-markers/graphic-markers",
+      "title": "Create markers with graphics | Maps JavaScript API",
+      "snippet": "This guide explains how to replace default Google Maps markers with custom graphics using the Advanced Markers API and the AdvancedMarkerElement class. · You can ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Shows custom graphics markers on Google Maps, relevant to map display functionality on the second terminal."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/examples/3d/marker-customization",
+      "title": "Customize markers | Maps JavaScript API",
+      "snippet": "The following example shows how to customize markers in 3D Maps in Maps JavaScript. Read the documentation. JavaScript CSS HTML",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Example page for customizing markers in 3D Maps on Maps JavaScript API; supports map display and marker rendering features."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/examples/icon-simple",
+      "title": "Markers with Image Icons | Maps JavaScript API",
+      "snippet": "google.maps. · This example demonstrates customizing a Google Maps marker with a beach flag image icon. · The provided code snippets showcase the implementation ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Example for marker image icons on Google Maps, relevant to map display and marker presentation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/examples/marker-symbol-custom",
+      "title": "Markers with Vector-Based Icons | Maps JavaScript API",
+      "snippet": "This example demonstrates creating a custom marker icon using SVG path notation, resulting in a blue, marker-shaped symbol on the map. The sample code provides ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Example for vector-based marker icons on Google Maps, supporting map display unit functionality."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/advanced-markers-now-available-for-ios-and-android-easily-customize-your-markers-across-platforms/",
+      "title": "Advanced Markers, now available for iOS and Android",
+      "snippet": "You can customize the Google Maps pin using SVGs, PNGs, or native views (for Android) and UIViews (for iOS) to create custom markers and control ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Official Google Maps Platform blog announcing advanced markers for iOS and Android; relevant to mobile map display and marker customization."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/announcing-highly-customizable-higher-performance-markers/",
+      "title": "easily create highly customized, faster performance markers",
+      "snippet": "You can create highly customized, faster performance markers that provide a richer user experience, showcase your brand, and save time and resources.",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Official blog about advanced markers and customizable markers on Google Maps, supporting map display functionality."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/build-maps-faster-web-components/",
+      "title": "Build maps faster with Web Components",
+      "snippet": "Developers can access Map and Advanced Marker Web Components directly from the Maps JavaScript API. They are an easy and quick way for ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Official blog says Map and Advanced Marker Web Components are available from Maps JavaScript API, relevant to map display and marker rendering."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/latest-maps-customization/",
+      "title": "The latest on maps customization",
+      "snippet": "Data-driven styling and advanced markers are the latest cloud-based maps styling features included with Dynamic Maps for the Maps JavaScript API ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Official blog discusses data-driven styling and advanced markers as Maps customization features, supporting map display behavior."
+    },
+    {
+      "url": "https://mapsplatform.google.com/maps-products/dynamic-maps/",
+      "title": "Custom Dynamic Map Visualization",
+      "snippet": "Included with Maps Javascript API and available for Android SDK and iOS SDK. Easily create custom interactive markers. Make markers your own. Change the color ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Product page for Dynamic Maps says it includes interactive markers and map customization, relevant to the map display unit."
+    },
+    {
+      "url": "https://mapsplatform.google.com/intl/en_uk/maps-products/dynamic-maps/",
+      "title": "Custom Dynamic Map visualisation",
+      "snippet": "Included with Maps Javascript API and available for Android SDK and iOS SDK. Easily create custom interactive markers. Make markers your own. Change the color ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Same Dynamic Maps product page for UK locale; describes interactive markers and map customization on maps."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/introducing-road-level-details-in-the-maps-javascript-api-maps-sdks/",
+      "title": "Introducing road level details in the Maps Javascript API, ...",
+      "snippet": "We're excited to introduce visual road level details across the Maps JavaScript API, Maps SDKs, and Navigation SDKs.",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Official blog about road level details across Maps SDKs; while not about dispatch, it is directly about Maps SDK display behavior and mobile map rendering, with SDKs that can receive and render location-related data."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/3d-maps-for-javascript-api-now-in-preview-start-building-your-own-immersive-maps-experience-today/",
+      "title": "3D Maps for JavaScript API now in Preview: start building ...",
+      "snippet": "We've added more options to customize your markers to ensure brand consistency and differentiate key locations. You can now replace the default ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Official blog about 3D Maps for JavaScript API and marker customization, relevant to map display and automatic map presentation features."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/place-id",
+      "title": "Place IDs | Places API",
+      "snippet": "Retrieving an address for a Place ID in the Geocoding API and Geocoding Service, Maps JavaScript API. Specifying origin, destination and intermediate waypoints ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Place IDs page references retrieving an address for a Place ID via Geocoding and related services, which is adjacent evidence for address/location correlation."
+    },
+    {
+      "url": "https://developers.google.com/maps/apis-by-platform",
+      "title": "Google Maps Platform APIs by Platform",
+      "snippet": "Geocoding API. Convert between addresses and geographic coordinates. Geolocation API. Location data from cell towers and Wi-Fi nodes. Maps Datasets API. Upload ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E6"
+      ],
+      "rationale": "Platform overview lists Geocoding, Geolocation, and Maps SDKs/Embed products, supporting the existence of address lookup, device location, and map display features across Google Maps Platform."
+    },
+    {
+      "url": "https://mapsplatform.google.com/demos/address-descriptors/",
+      "title": "Address Descriptors",
+      "snippet": "Reverse Geocoding API makes it easier to find an address by now returning the most relevant landmarks and area names relative to the geocoded point. Start ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Demo page discusses reverse geocoding and returning landmarks/area names relative to a geocoded point, which is related location-based address data."
+    },
+    {
+      "url": "https://mapsplatform.google.com/",
+      "title": "Google Maps Platform - 3D Mapping & Geospatial Analytics",
+      "snippet": "GeocodingConvert addresses to geographic coordinates or the reverse. GeolocationReturn the location of a device without relying on GPS, using geospatial data ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1",
+        "E4"
+      ],
+      "rationale": "Google Maps Platform landing page lists Geocoding and Geolocation products, providing contextual support for address lookup and location-data handling, though not detailed claim-level evidence."
+    },
+    {
+      "url": "https://cloud.google.com/blog/products/application-modernization/address-validation-using-google-maps-api-in-ecommerce",
+      "title": "Address Validation using Google Maps API in Ecommerce ...",
+      "snippet": "Google Maps Platform offers APIs, such as Place Autocomplete API and Address Validation API that improve accuracy of address validation to ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Blog describes using Address Validation and Place Autocomplete to verify entered addresses in backend workflows, which supports address input validation and geocoding-adjacent behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps",
+      "title": "Google Maps Platform",
+      "snippet": "Add a map to your iOS app with SwiftUI. Learn how to integrate the Maps SDK for iOS into your mobile apps using SwiftUI. Codelab: Add a map to your Android ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E4",
+        "E5"
+      ],
+      "rationale": "General Google Maps Platform landing page mentions Maps, Routes, Places and navigation-related experiences; broad contextual support only."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/op-overview",
+      "title": "About the Places API (New)",
+      "snippet": "Place Details (New) provides detailed information about a place using its Place ID, including address, ratings, and reviews, and is more efficient than ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Places API overview indicates place details include address and related place data, which is adjacent support for address/location lookup, though not the full geocoding workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/legacy/details",
+      "title": "Place Details (Legacy) | Places API",
+      "snippet": "A Place Details (Legacy) request returns more comprehensive information about the indicated place such as its complete address, phone number, user rating and ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Place Details documentation says it returns a place's complete address and other details, supporting location-based data retrieval tied to an address or place."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/maps-service-terms",
+      "title": "Google Maps Platform Service Specific Terms",
+      "snippet": "5.1 Use without a Google Map. Customer may use Google Maps Content from the Geocoding API in Customer Applications without a corresponding Google Map. 5.2 No ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1",
+        "E3",
+        "E4"
+      ],
+      "rationale": "Service terms mention Geocoding API, Geolocation API, and caching latitude/longitude values, which supports location-data handling and storage, though it is contractual rather than functional documentation."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/maps-service-terms/index-20240515",
+      "title": "Google Maps Platform Service Specific Terms",
+      "snippet": "Customer can cache Geocoding API Place ID (place_id) values, in accordance with the Geocoding API Policies. ... If Customer uses the Address ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1",
+        "E3",
+        "E4"
+      ],
+      "rationale": "Archived service terms expressly allow temporary caching of latitude/longitude from Geocoding and Directions APIs, supporting storage of location-based data and related transmission/use."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/maps-service-terms/index-20221109",
+      "title": "Google Maps Platform Service Specific Terms",
+      "snippet": "Customer can cache Geocoding API Place ID (place_id) values, in accordance with the Geocoding API Policies . ... If Customer uses the Address ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1",
+        "E3"
+      ],
+      "rationale": "Archived terms reference Geocoding API caching and address-related usage, giving supporting evidence for address/location data handling and transmission, though not the full dispatch logic."
+    },
+    {
+      "url": "https://mapsplatform.google.com/solutions/improve-addresses/",
+      "title": "Maps Solutions: Improve Addresses",
+      "snippet": "GeocodingConvert addresses to geographic coordinates or the reverse. GeolocationReturn the location of a device without relying on GPS, using ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Solution page explicitly mentions geocoding converting addresses to geographic coordinates and geolocation returning device location, which is relevant supporting context for address and device-location handling."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/introducing-plus-codes-place-autocomplete-place-details-and-geocoding-help-you-serve-users-everywhere/",
+      "title": "Introducing Plus Codes in Place Autocomplete, ...",
+      "snippet": "Geocoding now also accepts Plus Codes as the address request parameter and will return the same Plus Code as a fully populated Geocoding result.",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Blog post discusses geocoding accepting address requests and returning populated results, supporting address-to-location correlation, but it is more explanatory than operational."
+    },
+    {
+      "url": "https://mapsplatform.google.com/maps-products/places/",
+      "title": "Comprehensive & Accurate Place Information",
+      "snippet": "Get comprehensive information. Create new features that bring location data for over 200 million places to your users. Validate addresses as they're entered.",
+      "score": 0.5,
+      "matched_elements": [
+        "E1",
+        "E4"
+      ],
+      "rationale": "Product page says it provides comprehensive place information and validates addresses as entered, which supports address lookup and related location-data handling."
+    },
+    {
+      "url": "https://cloud.google.com/blog/topics/developers-practitioners/leveraging-bigquery-public-boundaries-datasets-geospatial-analytics",
+      "title": "Leveraging BigQuery Public Boundaries datasets for ...",
+      "snippet": "Using the Google Maps Geocoding API we can convert an address into a lat/long and then store the results in the BigQuery table. With a lat/long ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Blog explains using Geocoding API to convert an address into lat/long and store results, which supports address-to-location correlation and storage."
+    },
+    {
+      "url": "https://cloud.google.com/customers/cbcloud",
+      "title": "CBcloud Case Study | Google Cloud",
+      "snippet": "... Geocoding API converts user addresses into precise coordinates. Meanwhile, the innovative use of Places API has proven crucial for last-mile delivery. \"With ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Case study states Geocoding API converts user addresses into precise coordinates, directly supporting address-to-location correlation."
+    },
+    {
+      "url": "https://cloud.google.com/customers/licious",
+      "title": "Licious Case Study",
+      "snippet": "Using Place Search and Place Autocomplete, the customer's address can easily be entered in the web portal and then translated into coordinates using the ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Case study says customer addresses can be entered and translated into coordinates using Google Maps APIs, supporting address lookup and geocoding."
+    },
+    {
+      "url": "https://cloud.google.com/customers/meero",
+      "title": "Meero Case Study",
+      "snippet": "Where locations need to be found with coordinates, they are converted into standard addresses using the Geocoding API. Photographers can even drop a pin on ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1",
+        "E5"
+      ],
+      "rationale": "Case study mentions converting locations into standard addresses using Geocoding API and suggests workflow around location handling, which is adjacent support for address/location correlation and dispatch-like use."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/dds-boundaries/dds-use-maps-places-apis",
+      "title": "Use Places APIs and Geocoding with data-driven styling ...",
+      "snippet": "You can use the Places SDK for iOS and the Geocoding API with the Maps SDK for iOS to search for regions, and get more information about places.",
+      "score": 0.5,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Discusses using Places APIs and Geocoding API with Maps SDK for iOS to search for regions and get more information about places. This supports geocoding/address-to-location correlation and map presentation, but only indirectly."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/map",
+      "title": "Add a map | Maps SDK for iOS",
+      "snippet": "The Maps SDK for iOS allows you to integrate Google Maps into your iOS application, offering features and interactions similar to the Google Maps app.",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Maps SDK for iOS documentation for adding a map and integrating Google Maps into an iOS app. Good supporting evidence for a map display unit and automatic map rendering, but not the dispatch logic."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/tiles",
+      "title": "Tile Layers | Maps SDK for iOS",
+      "snippet": "Call clearTileCache to refresh stale or outdated tile data. Select platform: Android iOS JavaScript. You can add images on top of your map as a Tile Layer.",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Official Maps SDK for iOS tile layer docs discuss adding images on top of a map and refreshing tile data, supporting map display behavior on the second terminal."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/reference/com/google/android/libraries/maps/LocationSource",
+      "title": "LocationSource | Maps SDK for Android",
+      "snippet": "While active (between activate(OnLocationChangedListener) and deactivate() ), a location provider should push periodic location updates to the listener ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "rationale": "Android Maps SDK reference for a location source that pushes periodic location updates to the map listener, supporting device-location input and transmission into the mapping app."
+    },
+    {
+      "url": "https://codelabs.developers.google.com/codelabs/while-in-use-location",
+      "title": "Receive location updates in Android with Kotlin",
+      "snippet": "In this codelab, you learn how to receive location updates and how to support location on any version of Android, particularly Android 10 and 11.",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "rationale": "Google codelab on receiving location updates in Android describes subscribing to device location and saving location data, which is adjacent evidence for the second terminal obtaining and handling its own location data."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/android-sdk/background-location-usage",
+      "title": "Background location usage best practices",
+      "snippet": "This page explains best practices for requesting and managing background location usage permissions. Request \"Allow all the time\" location permissions.",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "rationale": "Navigation SDK guidance on requesting and managing background location usage is relevant to device-location acquisition and transmission from the terminal."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/datasets/overview",
+      "title": "Maps Datasets API overview",
+      "snippet": "Maps Datasets API lets you create and manage datasets using a REST API. Note: There is no charge for using the Maps Datasets API.",
+      "score": 0.5,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Maps Datasets API overview describes creating and managing datasets for geospatial data, which is supporting evidence for storing location-based data in a Google Maps Platform product context."
+    },
+    {
+      "url": "https://cloud.google.com/blog/products/gcp/build-your-own-scalable-location-analysis-platform-with-google-cloud-platform-and-maps-apis",
+      "title": "Build your own scalable, location analysis platform with ...",
+      "snippet": "We recently built a scalable geolocation telemetry system with just Google Cloud Pub/Sub, Google BigQuery and the Google Maps APIs.",
+      "score": 0.5,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Google Cloud blog states Maps APIs convert raw GPS position into human-readable structured address data, which is strong adjacent evidence for address/location correlation."
+    },
+    {
+      "url": "https://developers.google.com/maps/comms/eea/distance-matrix",
+      "title": "Distance Matrix API (Legacy) adjustments for European ...",
+      "snippet": "If you use the Distance Matrix API (Legacy) to display addresses or steps on a map, you must change your integration to either display a map without addresses ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E5",
+        "E6"
+      ],
+      "rationale": "EEA guidance for Distance Matrix API mentions displaying addresses or steps on a map, which is relevant to map display behavior and route/address presentation, though it is compliance-focused."
+    },
+    {
+      "url": "https://cloud.google.com/customers/green-flag",
+      "title": "Green Flag Case Study",
+      "snippet": "By leveraging Google Maps Platform, Green Flag uses location data to determine where customers are when they need help, creating a stress-free customer journey ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E3",
+        "E4",
+        "E5",
+        "E6"
+      ],
+      "rationale": "Case study says Green Flag uses Google Maps Platform location data to determine where customers are when they need help, indicating location capture and dispatch-style use of Maps data, though not the full claimed workflow."
+    },
+    {
+      "url": "https://cloud.google.com/customers/indriver",
+      "title": "inDriver Case Study",
+      "snippet": "It plans to start using the Distance Matrix API for a new carpooling service. And it's developing a \"super app\" (a mobile platform that provides multiple ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Case study references use of the Distance Matrix API for carpooling and route optimization, which is adjacent evidence for criteria-based routing/dispatch decisions, but it does not describe the full claim flow."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/announcing-routes-api-new-enhanced-version-directions-and-distance-matrix-apis/",
+      "title": "Announcing Routes API: the new enhanced version of ...",
+      "snippet": "For over a decade, our Directions and Distance Matrix APIs have helped you quickly and efficiently route people and goods from A to B. And ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Official Google Maps Platform blog about Routes API and Distance Matrix/Directions capabilities for routing people and goods from A to B, supporting conditional dispatch/routing behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/routes/route-matrix-class-overview",
+      "title": "Route Matrix class overview | Maps JavaScript API",
+      "snippet": "The RouteMatrix class returns distances and travel times for a matrix of routes between different origin and destination locations. Calculate travel times and ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Maps JavaScript API documentation for calculating distances and travel times between origins and destinations; related to route/dispatch decisioning and conditional selection of locations, though not a direct dispatch workflow.; Route matrix docs support route calculation between origins and destinations, which is related to dispatch criteria and correlated location data, though not a direct server-to-device dispatch disclosure."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/controls",
+      "title": "Controls | Maps JavaScript API",
+      "snippet": "You can adjust control presentation upon instantiating your map (with appropriate MapOptions ) or modify a map dynamically by calling setOptions() to change the ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Documents map controls and dynamic modification of map presentation, supporting the notion of a map display unit that can be updated automatically or programmatically."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript",
+      "title": "Google Maps Platform Documentation | Maps JavaScript API",
+      "snippet": "Display the road, satellite, hybrid, terrain, and custom maps. Localization. Automatically localize text on the map into over 40 languages.",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Product documentation states the API displays interactive maps and supports localization/current location features, which is adjacent evidence for a map display terminal and automatic map display behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/infowindows",
+      "title": "Info Windows | Maps JavaScript API",
+      "snippet": "Opening an info window on a marker will automatically update the position . ... By default, an info window expands to fit its content, and auto- ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Describes opening an info window on a marker and automatic position updates, supporting automatic display updates on a map."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/cloud-customization/update-legacy",
+      "title": "Verify an auto-migrated map style | Maps JavaScript API",
+      "snippet": "To check if your automatically migrated map styles work, do the following: In the style editor, open the updated map style. Map features that have custom styles ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Explains auto-migrated map styles and verifying updated map styles, which is supporting evidence for automatic map display updates."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/map",
+      "title": "Add a map | Maps SDK for Android",
+      "snippet": "This topic describes how to add a basic map to an Android app after you have configured the project to use the Maps SDK for Android.",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Official Android Maps SDK documentation for adding a map and related location data features; supports the presence of a map display unit and automatic display of map content, though it does not address dispatch or server-side criteria."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/examples/basic-map",
+      "title": "Display a basic map | Maps SDK for iOS",
+      "snippet": "This guide demonstrates how to create a basic map centered on Seattle using the Google Maps SDK for iOS. · It provides code samples in both Swift and Objective-C ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Official iOS Maps SDK guide for displaying a basic map, supporting the map display unit limitation and automatic map rendering behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/controls",
+      "title": "Controls and gestures | Maps SDK for iOS",
+      "snippet": "Using the Maps SDK for iOS, you can customize the way in which users interact with your map, by determining which of the built in UI components appear on the ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Official iOS Maps SDK documentation about map controls and location data, supporting a terminal with a map display and location-aware map interaction."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/android-sdk/android-auto",
+      "title": "Enable navigation for Android Auto",
+      "snippet": "When you enable your Navigation SDK-powered app to work with Android Auto, you provide an additional view for the navigation experience. This allows for two map ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Official Navigation SDK documentation states enabling Android Auto provides an additional navigation view with two map displays, supporting map display and navigation-related automatic presentation."
+    },
+    {
+      "url": "https://cloud.google.com/customers/dominos-maps",
+      "title": "Domino's Case Study",
+      "snippet": "... map and automatically displays turn-by-turn directions for drivers. \"Google Maps Platform and specifically the Navigation SDK is the glue holding our ...",
+      "score": 0.5,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Customer case study says the map automatically displays turn-by-turn directions for drivers, which is analogous to automatic loading of map/navigation content into a display unit."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/maps-services",
+      "title": "Google Maps Platform Core Services Summary",
+      "snippet": "The complete list of services that form the Generally Available Google Maps Platform Core Services is shown below.",
+      "score": 0.45,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Core services summary lists Geocoding, Geolocation, Maps SDKs, and related APIs, which are relevant to address-to-location correlation and device location/map display, but it is mostly a service catalog."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/other/premium-included-apis",
+      "title": "Google Maps APIs Premium Plan: Included APIs",
+      "snippet": "The following APIs are included with the Google Maps APIs Premium Plan: Google Maps Android API (https://developers.google.com/maps/documentation/android-sdk)",
+      "score": 0.45,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Lists Geocoding, Geolocation, Maps Android/iOS, and Static Maps APIs; supports the feature set implicated by the claim, though not the workflow itself."
+    },
+    {
+      "url": "https://cloud.google.com/archive/maps-platform/terms/maps-services-20240624",
+      "title": "Google Maps Platform Core Services Summary",
+      "snippet": "The complete list of services that form the Generally Available Google Maps Platform Core Services is shown below.",
+      "score": 0.45,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Archived core services summary listing Geocoding, Geolocation, Maps SDKs, and related APIs; relevant as official product documentation but only catalog-level evidence."
+    },
+    {
+      "url": "https://cloud.google.com/archive/maps-platform/terms/maps-services-20250630",
+      "title": "Google Maps Platform Core Services Summary",
+      "snippet": "The complete list of services that form the Generally Available Google Maps Platform Core Services is shown below. While Google offers many ...",
+      "score": 0.45,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E6"
+      ],
+      "rationale": "Archived core services summary listing Geocoding, Geolocation, Maps SDKs, and Maps Embed/Static services; supports the product feature area at a high level."
+    },
+    {
+      "url": "https://cloud.google.com/terms/maps-platform/eea-safety-requirements",
+      "title": "Safety requirements",
+      "snippet": "When using Google Maps Platform services to create real-time navigation functionality, Customer will adhere to the following requirements.",
+      "score": 0.45,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E6"
+      ],
+      "rationale": "Safety requirements for real-time driving/navigation applications using Google Maps Platform; relevant as supporting documentation for navigation apps and location-based map presentation."
+    },
+    {
+      "url": "https://developers.google.com/maps/architecture/bigquery-datasets-visualization",
+      "title": "Visualize your data with BigQuery and Datasets API",
+      "snippet": "This document provides a reference architecture and example for creating map data visualizations with location data in Google Cloud BigQuery and Google Maps ...",
+      "score": 0.45,
+      "matched_elements": [
+        "E4",
+        "E6"
+      ],
+      "rationale": "Architecture page discusses visualizing large location datasets on maps using BigQuery and Datasets API; supportive for storing and displaying location-based data, though not dispatch-specific."
+    },
+    {
+      "url": "https://cloud.google.com/terms/maps-platform/eea-places-api-permitted-uses",
+      "title": "Google Maps Platform Places API Permitted Uses",
+      "snippet": "Customers with a billing address in the EEA may only use the Google Maps Content from the Places API within Customer Applications to (collectively, the “ ...",
+      "score": 0.4,
+      "matched_elements": [
+        "E1",
+        "E4"
+      ],
+      "rationale": "Permitted uses include address lookup and autocompletion, which aligns with address-to-location correlation, but the page is policy-focused rather than functional documentation."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/other/maps-services-summary?hl=es-419",
+      "title": "Google Maps | Google Cloud Platform Terms",
+      "snippet": "map rendering toolkits that display Google Maps. Features include: Display road and satellite imagery. Overlay markers, polylines, and polygons on the map.",
+      "score": 0.4,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Service summary mentions geocoding, location-based cell tower/wifi information, and native toolkits; relevant but largely a terms/catalog page."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/maps-service-terms/index-20200324",
+      "title": "Google Maps Platform Service Specific Terms",
+      "snippet": "Maps Static API; Street View API; Maps SDK for Android; Maps SDK for iOS. Build customized map experiences that bring the real world to your ...",
+      "score": 0.4,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Service-specific terms explicitly cover Geocoding and Geolocation APIs and caching of lat/lng values, supporting address/location correlation and location data handling."
+    },
+    {
+      "url": "https://mapsplatform.google.com/maps-products/navigation-sdk/",
+      "title": "Navigation SDK Tools for Developers",
+      "snippet": "Display the ideal locationCreate maps for customers to find stores and ATMs. Enable asset trackingTrack and visualize moving assets for any fleet size ...",
+      "score": 0.35,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Product page for Navigation SDK mentions custom maps, asset tracking, and navigation experiences; relevant to map display and location-based workflows, but not the dispatch criteria."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/introducing-navigation-sdk-deliver-seamless-customized-in-app-google-maps/",
+      "title": "Introducing Navigation SDK for Android and iOS",
+      "snippet": "Navigation SDK enables developers to control the full end to end experience for customers, personalizing the look and feel of navigation experience and ...",
+      "score": 0.35,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Blog post about Navigation SDK and customized in-app Google Maps navigation; supports map display and location-driven app behavior, though indirectly."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/learn-about-our-updated-renderer-maps-sdk-android/",
+      "title": "Learn about our updated renderer for the Maps SDK ...",
+      "snippet": "Display the ideal locationCreate maps for customers to find stores and ATMs. Enable asset trackingTrack and visualize moving assets for any ...",
+      "score": 0.35,
+      "matched_elements": [
+        "E2",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Blog post about the Maps SDK for Android renderer and map display capabilities; useful supporting evidence for map display and updates."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/compose-maps-sdk-android-now-available/",
+      "title": "Compose for the Maps SDK for Android Now Available",
+      "snippet": "Display the ideal locationCreate maps for customers to find stores and ATMs. Enable asset trackingTrack and visualize moving assets for any ...",
+      "score": 0.35,
+      "matched_elements": [
+        "E2",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Blog post about Compose support for Maps SDK for Android; relevant to displaying and updating maps in an Android terminal."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms",
+      "title": "Google Maps Platform Terms Of Service",
+      "snippet": "This section outlines the licensing terms for Google Maps Platform Services, focusing on the restrictions and requirements on how to use the Services.",
+      "score": 0.35,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "General Google Maps Platform terms mention services, customer applications, and use of Maps Platform, but do not directly describe the claimed dispatch workflow."
+    },
+    {
+      "url": "https://cloud.google.com/customers/free-now",
+      "title": "FREE NOW Case Study",
+      "snippet": "Working closely with the Google Maps engineering team, the FREE NOW product team used Google Maps Platform Driver/Nav SDK to integrate Google Maps directly into ...",
+      "score": 0.35,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E6"
+      ],
+      "rationale": "Customer case study says FREE NOW used Google Maps Platform Driver/Nav SDK to integrate Google Maps directly into its app, supporting mobile navigation/map display."
+    },
+    {
+      "url": "https://developers.google.com/maps/api-security-best-practices",
+      "title": "Google Maps Platform security guidance",
+      "snippet": "These best practices show you how to secure your Maps Platform access. If you want to use OAuth 2.0 to authorize server-to-server traffic, look for the OAuth ...",
+      "score": 0.35,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Security guidance for Maps Platform access and API key protection. Relevant only as contextual support for secure communication/authenticated requests, not the claim's dispatch behavior."
+    },
+    {
+      "url": "https://docs.cloud.google.com/api-keys/docs/add-restrictions-api-keys",
+      "title": "Adding restrictions to API keys",
+      "snippet": "API keys identify your application or website to Google Cloud. API key restrictions ensure that only your apps and websites can use your keys.",
+      "score": 0.35,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Explains API key restrictions for apps/websites and secure access to Google Cloud APIs. Only tangentially relevant to communication between terminal and server."
+    },
+    {
+      "url": "https://mapsplatform.google.com/intl/en_uk/solutions/display-the-ideal-location/",
+      "title": "Display the Ideal Location & Place Details",
+      "snippet": "Display the ideal location for customers, add place details to provide needed information, and create interactive maps with Google Maps Platform.",
+      "score": 0.35,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Solution landing page about displaying ideal locations and place details with interactive maps; relevant to map display but not the dispatch workflow."
+    },
+    {
+      "url": "https://mapsplatform.google.com/intl/en_uk/solutions/improve-addresses/",
+      "title": "Maps Solutions: Improve Addresses",
+      "snippet": "Learn to help users quickly enter the right address when searching, signing up, or checking out with Google Maps Platform.",
+      "score": 0.35,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Solution page about helping users enter the right address and improving address handling; relevant to address correlation/geocoding but high-level."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/best-practices-for-integrating-with-the-navigation-sdk-for-android/",
+      "title": "Best Practices for integrating with the Navigation SDK ...",
+      "snippet": "GoogleMap APIs allow you to create custom maps experiences, including drawing polygons, customizing icons, and more. When implementing GoogleMap ...",
+      "score": 0.3,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Discusses integrating Navigation SDK and GoogleMap APIs for custom map experiences; adjacent support for map display and location-based app behavior."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/introducing-building-entrances-and-destination-highlighting-in-the-navigation-sdk/",
+      "title": "Introducing building entrances and destination highlighting ...",
+      "snippet": "We're excited to announce the launch of building entrances and destination highlighting in the Navigation SDK for Android and iOS.",
+      "score": 0.3,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Navigation SDK feature announcement involving destination highlighting on maps; supports map display of destination/location data, but not dispatch logic."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/introducing-places-ui-kit-a-low-code-way-to-display-googles-places-content-on-your-map-of-choice/",
+      "title": "Introducing Places UI Kit: A low-code way to display ...",
+      "snippet": "A new low-code, low-cost product designed to bring the familiar Google Maps UI for Places onto your map of choice to help you more easily create impactful and ...",
+      "score": 0.3,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Places UI Kit page about displaying Places content on a map; relevant to map display and location content, though not the claim's transmission/criteria steps."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/examples/basic-map",
+      "title": "Display a basic map | Maps SDK for Android",
+      "snippet": "In Android Studio, select File > New > Import Project. · Go to the location where you saved the repository and select the project directory for Kotlin or Java:.",
+      "score": 0.3,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Basic map example for Android shows how to display a map in an app; useful background evidence for the map display unit."
+    },
+    {
+      "url": "https://cloud.google.com/customers/rapido-maps",
+      "title": "Rapido Case Study",
+      "snippet": "Integrating location and route data into the Rapido app. With the APIs and SDKs available through Google Maps Platform and Mobility services, Rapido is ...",
+      "score": 0.3,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Case study mentions integrating location and route data into the Rapido app using Google Maps Platform APIs and SDKs, which is adjacent to the claimed location/map behavior."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/meet-next-generation-mobile-optimized-maps/",
+      "title": "Meet the next generation of mobile-optimized maps",
+      "snippet": "Dynamic maps loaded with a Map ID via our Maps SDK for Android or Maps SDK for iOS will be billed to the same SKU as Maps JavaScript API ( ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "General Google Maps Platform blog about mobile-optimized maps; contextual support for map display on mobile devices but not the claim's dispatch workflow."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/introducing-3d-maps-on-mobile-build-immersive-experiences-for-android-and-ios/",
+      "title": "Introducing 3D Maps on mobile: Build immersive ...",
+      "snippet": "We're expanding 3D Maps to the native mobile landscape by introducing the new Maps 3D SDKs for Android and iOS in Experimental, bringing immersive experiences.",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "General announcement of 3D Maps on mobile for Android and iOS; relevant to mobile map display but not the claimed address/event dispatch behavior."
+    },
+    {
+      "url": "https://docs.cloud.google.com/looker/docs/release-notes",
+      "title": "Looker release notes",
+      "snippet": "Beginning in Looker 24.18, the October 2024 Looker release, Google Maps will be the only visualization engine for all map visualizations. The Legacy Maps chart ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Mentions Google Maps as a visualization engine for map visualizations in Looker; only tangentially relevant to map display."
+    },
+    {
+      "url": "https://docs.cloud.google.com/looker/docs/google-map-options",
+      "title": "Google Maps chart options | Looker",
+      "snippet": "Custom: Lets you set a single color to use for all map markers. The color value can also be formatted as an RGB hex string, such as #2ca6cd , or as CSS ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Looker Google Maps chart options discuss map markers and map visualization settings, which is only loosely related to the claim."
+    },
+    {
+      "url": "https://docs.cloud.google.com/looker/docs/reference/param-lookml-dashboard-google-maps",
+      "title": "Google Maps parameters for LookML dashboards | Looker",
+      "snippet": "LookML developers can add a built-in map layer or a custom map layer to a measure using the map_layer_name parameter. ... map markers. See ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "LookML dashboard Google Maps parameters mention built-in/custom map layers and map markers; contextual but not directly about the dispatch system."
+    },
+    {
+      "url": "https://docs.cloud.google.com/looker/docs/map-options",
+      "title": "Map (Legacy) chart options | Looker",
+      "snippet": "Marker Color Value · Based on Value: Colors are dynamically assigned to markers based on the values of your underlying query. To configure the colors in the ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Looker Map (Legacy) chart options mention marker color and map visualization controls; only weakly relevant."
+    },
+    {
+      "url": "https://docs.cloud.google.com/talent-solution/job-search/v3/docs/commute-search",
+      "title": "Implementing Commute Search in your UI (v3)",
+      "snippet": "Some Maps API options are more effective than others. For example, the Google Maps JavaScript Heatmap visualization paired with marker clustering is a great ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Commute search uses startCoordinates and address data to calculate commute time, which is location-based, but it is a different product feature than the claimed dispatch workflow."
+    },
+    {
+      "url": "https://docs.cloud.google.com/talent-solution/job-search/docs/commute-search",
+      "title": "Implementing commute search in your UI | Job Search",
+      "snippet": "For example, the Google Maps JavaScript Heatmap visualization paired with marker clustering is an effective way to visualize the relevant jobs returned to a job ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Same commute search documentation for Job Search; location-based search and map-related context only."
+    },
+    {
+      "url": "https://mapsplatform.google.com/solutions/provide-local-information/",
+      "title": "Maps Solutions: Provide Local Information",
+      "snippet": "GeocodingConvert addresses to geographic coordinates or the reverse. GeolocationReturn the location of a device without relying on GPS, using geospatial data ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Solutions page mentions Geocoding and Geolocation as part of local information features, but it is mostly high-level marketing context."
+    },
+    {
+      "url": "https://status.cloud.google.com/maps-platform/",
+      "title": "Google Maps Platform Status Dashboard",
+      "snippet": "This page provides status information on the services that are part of Google Maps Platform. Check back here to view the current status of the services listed ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E3",
+        "E6"
+      ],
+      "rationale": "Status dashboard lists Google Maps Platform services including Geocoding, Geolocation, Maps SDKs, and Maps Embed, but it is operational status information rather than feature documentation."
+    },
+    {
+      "url": "https://status.cloud.google.com/maps-platform/summary",
+      "title": "Google Maps Platform Status Dashboard",
+      "snippet": "Google Maps Platform Geocoding, Routing APIs returns INVALID_REQUEST for Geocoding (forward), 10 Jun 2025. 10 hours, 7 minutes.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Incident summary page references Geocoding and related Maps Platform services, offering only contextual support rather than substantive product behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/place-details",
+      "title": "Place Details (New) | Places API",
+      "snippet": "The Place Details API returns comprehensive information about a place, such as its address ... Geocoding API, Routes API, Address Validation API, and Place ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Place Details documentation notes that place details can include address information and is related to geocoding, but it does not directly describe the claim's dispatch workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/overview",
+      "title": "Overview | Places API",
+      "snippet": "The Places API is a service that accepts HTTP requests for location data through a variety of methods. It returns formatted location data and imagery.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Places API overview describes returning formatted location data, which is adjacent to address/location lookup but not directly tied to the claim limitations."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/place-types",
+      "title": "Place Types (New) | Places API",
+      "snippet": "A place's types are included in the response from a Place Details (New), Nearby Search (New), Text Search (New), and Autocomplete (New) request:.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Place Types page is related to place/location data in the Places API, but it does not directly evidence the claimed address correlation or dispatch behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/dds-boundaries/dds-use-maps-places-apis",
+      "title": "Use Places APIs and Geocoding with data-driven styling ...",
+      "snippet": "You can use the Places API and the Geocoding API in the Maps JavaScript API to search for regions, and get more information about places.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Page mentions using Places APIs and Geocoding in Maps JavaScript API to search for regions and get more information about places, which is related but not directly claim-matching."
+    },
+    {
+      "url": "https://docs.cloud.google.com/docs/authentication/api-keys",
+      "title": "Manage API keys | Authentication",
+      "snippet": "This page describes how to create, edit, and restrict API keys. For information about how to use API keys to access Google APIs, see Use API ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "API key documentation is only indirectly relevant because Google Maps APIs use keys; it does not describe the claimed location or dispatch functionality."
+    },
+    {
+      "url": "https://docs.cloud.google.com/apis/docs/monitoring",
+      "title": "Monitoring API usage",
+      "snippet": "This page describes how to use API metrics to track and understand your usage of Google APIs and Google Cloud APIs. Google APIs produce detailed usage ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Monitoring API usage is generic platform documentation and only tangentially relevant to Google Maps Platform services."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/views",
+      "title": "Camera and view | Maps SDK for Android",
+      "snippet": "The Maps SDK for Android allows developers to control the user's view of the map by manipulating the camera's position, zoom level, tilt, and bearing.",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Camera and view documentation for controlling map presentation; contextual support for a map display unit, but not location transmission or geocoding."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/coordinates",
+      "title": "Map and Tile Coordinates | Maps SDK for Android",
+      "snippet": "The Maps SDK for Android uses four coordinate systems: latitude/longitude, world, pixel, and tile coordinates. · World coordinates are based on the Mercator ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Explains map and tile coordinate systems used by the Maps SDK; only indirect support for location-based map display."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/utility/marker-clustering",
+      "title": "Marker Clustering | Maps SDK for iOS",
+      "snippet": "The marker clustering utility helps you manage multiple markers at different zoom levels. When a user views the map at a high zoom level, the individual markers ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Marker clustering is map-display functionality on iOS; only tangentially related to the claim."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk/advanced-markers/add-marker",
+      "title": "Create an advanced marker | Maps SDK for iOS",
+      "snippet": "Use the GMSAdvancedMarker subclass to create basic or specific marker features, as shown below. As a subclass of GMSMarker, GMSAdvancedMarker provides markers ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Advanced marker creation on iOS supports displaying location points on a map, but does not address dispatch or geolocation transmission."
+    },
+    {
+      "url": "https://status.cloud.google.com/maps-platform/summary?authuser=1&hl=zh-cn",
+      "title": "Google Maps Platform Status Dashboard",
+      "snippet": "This page provides status information on the services that are part of Google Maps Platform. Check back here to view the current status of the services ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Status dashboard lists Maps Platform services including Geocoding and Maps SDKs; only contextual evidence that these services exist and are operational."
+    },
+    {
+      "url": "https://cloud.google.com/blog/products/compute/googles-cloud-location-finder-unifies-multi-cloud-location-data",
+      "title": "Google's Cloud Location Finder unifies multi- ...",
+      "snippet": "Unified location data: Cloud Location Finder makes it easy for you to access the latest location information, providing a single source of truth ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Mentions unified location data and programmatic access, but it is about cloud region location data rather than map/geocoding dispatch behavior."
+    },
+    {
+      "url": "https://cloud.google.com/blog/products/data-analytics/geolocation-with-bigquery-de-identify-76-million-ip-addresses-in-20-seconds",
+      "title": "Geolocation with BigQuery: De-identify 76 million IP ...",
+      "snippet": "The new BigQuery Geo Viz tool that uses Google Maps APIs to chart geopoints around the world. Let's go straight into the query. Use the code ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Discusses geolocation of IP addresses using Google Maps APIs and a geolocation database; related to location correlation, but not the claimed dispatch workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/ios-sdk",
+      "title": "Google Maps Platform Documentation | Maps SDK for iOS",
+      "snippet": "Markers. Add markers to a map, make them interact with click events, customize the color, image, and more.",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E6"
+      ],
+      "rationale": "iOS SDK documentation hub mentions markers and map interactions; broad contextual support for map display and location features."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/geocoding/usage-and-billing",
+      "title": "Geocoding API Usage and Billing",
+      "snippet": "Reminder: To use the Geocoding API, you must enable billing on each of your projects and include an API key or OAuth token with all API or SDK requests.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Mentions the Geocoding API and request-based usage, but provides only billing context rather than the claimed functionality."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/how-to-get-started-with-new-gemini-model-capabilities-for-places-api/",
+      "title": "How to get started with new Gemini model capabilities for ...",
+      "snippet": "To get started with the Gemini model capabilities, make sure you've enabled the Places API (New) in your Google Cloud project.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Mentions Places API capabilities generally, but does not describe the claimed dispatch or map-display behavior directly."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/introducing-the-new-places-api-with-access-to-new-ev-accessibility-features-and-more/",
+      "title": "Introducing the new Places API with access to EV, ...",
+      "snippet": "A new Places API is now available to give developers the opportunity to share new types of information from Google Maps with their end users.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "General Places API announcement with no direct disclosure of the claimed address/location workflow."
+    },
+    {
+      "url": "https://mapsplatform.google.com/gemini-placesapi-demo/",
+      "title": "Gemini model capabilities for Places API",
+      "snippet": "Address ValidationValidate an address and its components, standardize the address for mailing, and determine the best known geocode for it. AutocompleteHelp ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Demo page references geocoding and geolocation in the product area, but the visible content is mostly promotional and not directly tied to the claim limitations."
+    },
+    {
+      "url": "https://mapsplatform.google.com/demos/gemini-places-api/",
+      "title": "Gemini model capabilities for Places API",
+      "snippet": "GeocodingConvert addresses to geographic coordinates or the reverse. GeolocationReturn the location of a device without relying on GPS, using geospatial ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Demo page mentions geocoding and geolocation as product capabilities, but does not directly evidence the claimed dispatch/map-display sequence."
+    },
+    {
+      "url": "https://docs.cloud.google.com/go/docs/reference/cloud.google.com/go/maps/latest/places/apiv1/placespb",
+      "title": "Places API (New) v1 - Package cloud.google.com/go/maps ...",
+      "snippet": "... place and a call to Place Details or Address Validation is // made. Each session can have multiple queries, followed by one Place Details // or Address ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Go client reference mentions Place Details and Address Validation sessions, which is relevant to place/address data but not the claimed dispatch behavior."
+    },
+    {
+      "url": "https://docs.cloud.google.com/go/docs/reference/cloud.google.com/go/maps/latest/places/apiv1",
+      "title": "Places API (New) v1 - Package cloud.google.com/go/maps ...",
+      "snippet": "The Places API allows developers to access a variety of search and retrieval endpoints for a Place.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Client library reference says the Places API provides search and retrieval endpoints for a place, which is only general supporting context."
+    },
+    {
+      "url": "https://console.cloud.google.com/apis/library/maps-backend.googleapis.com?hl=he",
+      "title": "Maps JavaScript API – APIs & Services",
+      "snippet": "Convert between addresses and geographic coordinates. Places API. Google Enterprise API. Get detailed information about 100 million places · Google Drive API.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Console listing snippet mentions converting between addresses and geographic coordinates and places API, but the page is not substantive documentation and is partially inaccessible."
+    },
+    {
+      "url": "https://console.cloud.google.com/apis/library/static-maps-backend.googleapis.com?authuser=0&hl=tr",
+      "title": "Maps Static API – APIs & Services",
+      "snippet": "Make places easily discoverable with interactive Google Maps. ... Convert between addresses and geographic coordinates. ... Directions between multiple locations.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Console listing snippet references addresses, geographic coordinates, and maps, but provides only minimal contextual evidence."
+    },
+    {
+      "url": "https://console.cloud.google.com/apis/library/mapmanagement.googleapis.com?utm_source=Docs_EnableAPIs&utm_content=Docs_mapmanagement&hl=vi",
+      "title": "Map Management API – APIs & Services",
+      "snippet": "Convert between addresses and geographic coordinates. Places API. Google Enterprise API. Get detailed information about 100 million places · Gmail API. Google ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Console listing snippet mentions converting between addresses and geographic coordinates, but it is only a generic API listing."
+    },
+    {
+      "url": "https://console.cloud.google.com/apis/library/mapsandroid.googleapis.com?authuser=4&hl=id",
+      "title": "Maps 3D SDK for Android – APIs & Services",
+      "snippet": "Convert between addresses and geographic coordinates. Places API. Google Enterprise API. Get detailed information about 100 million places · Maps SDK for ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Console listing snippet references addresses, geographic coordinates, and Places API, but does not directly describe the claimed behavior."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/maps-services/index-20240515",
+      "title": "Google Maps Platform Core Services Summary",
+      "snippet": "The complete list of services that form the Generally Available Google Maps Platform Core Services is shown below.",
+      "score": 0.25,
+      "matched_elements": [
+        "E3",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Core services summary is only a high-level listing of Maps Platform services; marginally relevant to location/map data handling."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/roads/speed-limits",
+      "title": "Speed limits | Roads API",
+      "snippet": "Page Summary · The Roads API returns the posted speed limit for given road segments, but the accuracy of the data is not guaranteed and may not be real-time.",
+      "score": 0.25,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Roads API documentation about speed limit data and snapped points is related to location/road data, but not the claimed dispatch or map-display workflow."
+    },
+    {
+      "url": "https://developers.google.com/transit/gtfs-realtime",
+      "title": "GTFS Realtime Overview - Transit",
+      "snippet": "GTFS Realtime is a feed specification that allows public transportation agencies to provide realtime updates about their fleet to application developers.",
+      "score": 0.25,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "GTFS Realtime describes real-time transit updates and vehicle positions, which is adjacent to location/event data transmission but not the claimed system."
+    },
+    {
+      "url": "https://cloud.google.com/customers/enevo",
+      "title": "Enevo Case Study",
+      "snippet": "The map displays bins and containers in their precise locations, alongside detailed status information, such as fill-level. The application also tracks GPS ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2"
+      ],
+      "rationale": "Case study mentions a map displaying precise locations and GPS tracking, which is related to map display and location data but not the dispatch criteria."
+    },
+    {
+      "url": "https://cloud.google.com/customers/gulliver",
+      "title": "Gulliver Case Study",
+      "snippet": "Google Maps Platform results. Provides real-time geospatial insights to delivery companies to optimize their fleet and logistics operations ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Case study references real-time geospatial insights for delivery logistics, which is only loosely related to location-based dispatch behavior."
+    },
+    {
+      "url": "https://cloud.google.com/customers/oway",
+      "title": "Oway Case Study",
+      "snippet": "Today, it deploys a range of Google Maps Platform APIs and SDKs to provide accurate real-time location data on its ride-sharing app. With the Maps SDK for ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Case study mentions Google Maps Platform APIs and SDKs providing accurate real-time location data on a ride-sharing app. Contextually relevant to location sharing and maps, but not detailed enough for claim limitations."
+    },
+    {
+      "url": "https://cloud.google.com/customers/menu",
+      "title": "menu Case Study",
+      "snippet": "Maps SDK for Android and Maps SDK for iOS are used to spot locations and delivery destinations for the customer and delivery staff. The Geocoding API converts ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E2",
+        "E3"
+      ],
+      "rationale": "Case study references Maps SDKs and Geocoding API for spotting locations and delivery destinations. This is only high-level contextual support for address/location correlation and map use."
+    },
+    {
+      "url": "https://cloud.google.com/customers/staples",
+      "title": "Staples: helping customers easily locate stores",
+      "snippet": "The iOS mobile app uses the Maps SDK for iOS for the store locator, and the Android app uses the Maps SDK for Android. To make it easier to find stores, the ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Case study says the app uses Maps SDK for iOS/Android for a store locator. Relevant to map display and location lookup, but not the dispatch workflow."
+    },
+    {
+      "url": "https://cloud.google.com/customers/hktaxi",
+      "title": "HKTaxi Case Study",
+      "snippet": "HKTaxi turned to Maps SDK for iOS and Maps SDK for Android to add maps based on Google Maps data to its app. \"We decided to use the Maps SDKs delivered ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E3"
+      ],
+      "rationale": "Case study says the app uses Maps SDKs to add maps based on Google Maps data. Only contextual evidence for map display and location-based app behavior."
+    },
+    {
+      "url": "https://mapsplatform.google.com/maps-products/places-ui-kit/",
+      "title": "Places UI Kit",
+      "snippet": "Easily add place content to any map. Add Google Maps UI for Places to any map with minimal code to let users discover and explore locations.",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Product page says Places UI Kit lets users discover and explore locations on a map. Relevant to map display and place/location presentation, but not the dispatch or transmission steps."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/address-validation/policies",
+      "title": "Policies and attributions for Address Validation API",
+      "snippet": "The Place ID, used to uniquely identify a place, is exempt from the caching restriction. You can therefore store Place ID values indefinitely. Place ID values ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Policy page mentions storage restrictions and place ID caching; only weakly related to retaining location-related data."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/policies",
+      "title": "Policies and attributions for Places API",
+      "snippet": "This document lists requirements that are specific to all applications developed with the Places API (New), including the Autocomplete (New) service that is ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E4"
+      ],
+      "rationale": "Policies page discusses address/place data handling, caching, and storage restrictions, which is tangentially relevant to address lookup and location-data retention."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/ios-sdk/overview",
+      "title": "Overview | Places SDK for iOS",
+      "snippet": "On-device caching: Most requests to the Places SDK for iOS may involve a round trip to a Google server, but you can also cache data locally for 30 days. ... Maps ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E4",
+        "E6"
+      ],
+      "rationale": "Places SDK overview mentions on-device caching and place data, which is adjacent to address/location correlation and map display but does not directly describe dispatch behavior."
+    },
+    {
+      "url": "https://cloud.google.com/memorystore",
+      "title": "Memorystore: in-memory Redis compatible data store",
+      "snippet": "A fully managed in-memory service for Redis and Memcached that offers sub millisecond data access, scalability, and high availability.",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "General in-memory data store documentation is only loosely relevant to the claim's memory-retention limitation."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/jumpstart-your-location-experiences-new-integrations-across-google/",
+      "title": "Jumpstart your location experiences with new integrations ...",
+      "snippet": "In the Locator Plus solution, you can capture the location of every single store you want to show users – all within one map. With Google Cloud, ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Blog references capturing store locations and location experiences, but it is high-level and not directly about the claimed dispatch workflow."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/how-indriver-uses-google-maps-platform-make-everyday-journeys-accessible-millions-worldwide/",
+      "title": "How inDriver uses Google Maps Platform to make ...",
+      "snippet": "We deploy a range of Google Maps Platform APIs, including the Directions API, Places API, and Geocoding API to help direct the drivers. But ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E5"
+      ],
+      "rationale": "Blog mentions Directions, Places, and Geocoding APIs to help direct drivers, which is adjacent to address lookup and dispatch-like routing, but not the full claimed sequence."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/find-your-very-own-here-inspired-by-upcoming-feature-film-here-powered-by/",
+      "title": "Find your very own “here” inspired by upcoming feature ...",
+      "snippet": "To enhance the site with location-based personalization and interactivity, the experience also integrates several Google Maps Platform products:.",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Mentions location-based personalization and interactivity, but does not directly describe the claimed terminal-to-terminal location dispatch flow."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/solution-finder/",
+      "title": "Mapping and Location-Based Solutions",
+      "snippet": "Utilize the Google Maps Platform solution finder to discover business mapping and location-based solutions that help improve customer experience.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Generic solution-finder page for mapping and location-based solutions; only broad contextual relevance to address and map features."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/location-intelligence-new-frontier-data-driven-success/",
+      "title": "Location intelligence: the new frontier for data-driven success",
+      "snippet": "Location intelligence: the new frontier for data-driven success ... Get up to 10,000 free* calls per SKU per month and build more with Google Maps ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "General location-intelligence marketing content mentioning Google Maps Platform; only weak contextual relevance to map/location features."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/three-ways-add-map-implementation-your-app-and-when-use-each/",
+      "title": "Three ways to add a map implementation to your app and ...",
+      "snippet": "**Use map links to share locations and directions**Every day, millions of people worldwide use Google Maps to find places to go and things to do ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Blog about adding map implementations and sharing locations/directions; relevant to map display and routing only at a high level."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/help-users-discover-more-new-places-api-updates/",
+      "title": "Help users discover more with new Places API updates",
+      "snippet": "The Places API provides you with business information, ratings, reviews and more for over 200 million businesses and places around the world.",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Places API update blog about business information and discovery; only loosely related to location-based display and lookup."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/new-solution-guides-to-help-you-easily-create-3d-immersive-experiences/",
+      "title": "New solution guides to help you easily create 3D ...",
+      "snippet": "The 3D Area Explorer solution allows you to create immersive, interactive experiences using Google Maps Platform Photorealistic 3D Tiles and the Places API.",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Mentions immersive experiences and Places API, but not the dispatch/location transmission limitations."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/provide-ai-powered-place-and-area-summaries-with-gemini-model-capabilities/",
+      "title": "Provide AI-powered place and area summaries, with ...",
+      "snippet": "These summaries use the Gemini model to analyze the place information and insights from Google Maps' community of over 300 million contributors.",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Places summary content is adjacent to map/location products but does not address the claim limitations directly."
+    },
+    {
+      "url": "https://cloud.google.com/archive/maps-platform/terms/maps-service-terms-20250630",
+      "title": "Google Maps Platform Service Specific Terms",
+      "snippet": "Service Specific Terms that are incorporated into the agreement under which Google provides Google Maps Platform Service to the Customer.",
+      "score": 0.25,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Service terms mention Geolocation API, Geocoding API, and caching of lat/lng values, which is tangential support for location data handling but not the claimed workflow."
+    },
+    {
+      "url": "https://cloud.google.com/archive/maps-platform/terms/maps-service-terms-20240909",
+      "title": "Google Maps Platform Service Specific Terms",
+      "snippet": "Service Specific Terms that are incorporated into the agreement under which Google provides Google Maps Platform Service to the Customer.",
+      "score": 0.25,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Archived service terms mention Geocoding and Geolocation APIs and caching latitude/longitude values; only indirect support for location-data transmission/storage."
+    },
+    {
+      "url": "https://cloud.google.com/terms/maps-platform/eea/maps-service-terms",
+      "title": "Google Maps Platform EEA Service Specific Terms",
+      "snippet": "These EEA Service Specific Terms apply to Customers who have a billing account address in the European Economic Area.",
+      "score": 0.25,
+      "matched_elements": [
+        "E3",
+        "E6"
+      ],
+      "rationale": "Terms document references real-time navigation, routing/navigation functionality, and Google Maps Platform use with maps; only indirect relevance to the claim."
+    },
+    {
+      "url": "https://cloud.google.com/archive/terms/maps-platform/eea/maps-service-terms-20250904",
+      "title": "Google Maps Platform EEA Service Specific Terms",
+      "snippet": "This page contains the Google Maps Platform EEA Service Specific Terms.",
+      "score": 0.25,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Archived EEA terms discuss real-time navigation and routing/navigation functionality, but not the specific dispatch/data flow."
+    },
+    {
+      "url": "https://cloud.google.com/customers/kaebox",
+      "title": "Kaebox Case Study",
+      "snippet": "Kaebox updates its driver- and customer-facing apps with Google Maps Platform Mobility services to deliver on its mission to connect people faster and more ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Case study about driver- and customer-facing apps using Mobility services; only broad contextual relevance to location sharing/navigation."
+    },
+    {
+      "url": "https://docs.cloud.google.com/php/docs/reference/maps-fleetengine-delivery/latest/V1.DeliveryVehicle",
+      "title": "Google Maps FleetEngine Delivery V1 Client",
+      "snippet": "The driver app has not updated its location recently, so the last updated value for this field might be stale. The driver app has recently updated its location ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E3",
+        "E4"
+      ],
+      "rationale": "Reference docs for DeliveryVehicle include fields about driver app location updates and stale location values, which is supportive but not a direct match to the claim."
+    },
+    {
+      "url": "https://docs.cloud.google.com/php/docs/reference/maps-fleetengine/latest/V1.LocationSensor",
+      "title": "Google Maps FleetEngine V1 Client - Class LocationSensor (0.5.3)",
+      "snippet": "Reference documentation and code samples for the Google Maps FleetEngine V1 Client class LocationSensor. The sensor or methodology used to determine the ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E3",
+        "E4"
+      ],
+      "rationale": "Reference for LocationSensor concerns how location is determined and reported, which is adjacent to device-location data handling."
+    },
+    {
+      "url": "https://cloud.google.com/blog/products/databases/how-waze-keeps-traffic-flowing-with-memorystore",
+      "title": "How Waze keeps traffic flowing with Memorystore",
+      "snippet": "This includes active navigation routes, user location, and driver reports that can appear and evolve within seconds. Behind the scenes, user ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Blog about real-time session data and user location storage in Memorystore is only loosely related to storing location data in memory."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/distance-matrix/policies",
+      "title": "Policies and attributions for Distance Matrix API (Legacy)",
+      "snippet": "This document lists requirements for applications developed with the Distance Matrix API (Legacy). Note that use of the Distance Matrix API (Legacy) is ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Policy page for Distance Matrix API is only indirectly related; it confirms the API exists and is used in applications, but does not describe the claimed dispatch workflow."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/licious-delivers-high-quality-meat-products-doorstep-help-google-maps-platform/",
+      "title": "Licious delivers high quality meat products to the doorstep ...",
+      "snippet": "Compute Routes MatrixCalculate travel times and distances for multiple destinations for up to 625 route elements. Navigation SDKAdd custom ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Customer story and snippet mention route matrix and navigation SDK for delivery logistics, which is loosely related to dispatching based on location data."
+    },
+    {
+      "url": "https://docs.cloud.google.com/php/docs/reference/maps-routeoptimization/latest/V1.ShipmentModel",
+      "title": "Google Maps Route Optimization V1 Client",
+      "snippet": "Reference documentation and code samples for the Google Maps Route Optimization V1 Client class ShipmentModel.",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Route Optimization reference documentation for shipment modeling and route matrices; relevant to conditional routing/dispatch decisions, but not the claimed terminal/map-display behavior."
+    },
+    {
+      "url": "https://docs.cloud.google.com/dotnet/docs/reference/Google.Cloud.Optimization.V1/latest/Google.Cloud.Optimization.V1.ShipmentModel",
+      "title": "Cloud Optimization v1 API - Class ShipmentModel (2.7.0)",
+      "snippet": "Specifies duration and distance matrices used in the model. If this field is empty, Google Maps or geodesic distances will be used instead, ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Cloud Optimization reference mentions duration and distance matrices and Google Maps/geodesic distances, which is adjacent to routing criteria but not the full claim."
+    },
+    {
+      "url": "https://docs.cloud.google.com/python/docs/reference/optimization/latest/google.cloud.optimization_v1.types.ShipmentModel",
+      "title": "Class ShipmentModel (1.14.0) | Python client libraries",
+      "snippet": "Tags defining the sources of the duration and distance matrices; duration_distance_matrices(i).rows(j) defines durations and distances from visits with tag ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Python optimization reference for duration and distance matrices; supports route optimization/dispatch criteria conceptually, but not the claimed system architecture."
+    },
+    {
+      "url": "https://docs.cloud.google.com/go/docs/reference/cloud.google.com/go/optimization/latest/apiv1/optimizationpb",
+      "title": "Package cloud.google.com/go/optimization/apiv1/ ...",
+      "snippet": "Specifies a duration and distance matrix from visit and vehicle start locations to visit and vehicle end locations. ... These should be a subset of the Google ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Go optimization reference for duration and distance matrices from start/end locations; adjacent evidence for routing decisions, not the full claim."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/index-20181001",
+      "title": "Google Maps Platform Terms of Service",
+      "snippet": "Customer will not extract, export, scrape, or cache Google Maps Content for use outside the Services. ... Maps SDK for iOS. Build customized map ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Official Maps Platform terms mention Maps SDK for iOS and general service usage, but this is mostly legal/terms content with only indirect relevance to storing or using map/location data.; Legal terms page mentions Maps SDKs and service usage but does not describe the operational behavior of receiving, storing, and dispatching location data."
+    },
+    {
+      "url": "https://developers.google.com/maps/terms-20180207",
+      "title": "Google Maps APIs Terms of Service",
+      "snippet": "The Google Maps APIs are a collection of services that allow you to include maps, geocoding, places, and other content from Google in your web pages or ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1"
+      ],
+      "rationale": "Maps APIs terms identify geocoding among the services, which is loosely relevant to address-to-location correlation, but the page is primarily legal terms rather than operational documentation.; Terms page references geocoding and other Maps services, giving only indirect support for address-to-location correlation."
+    },
+    {
+      "url": "https://cloud.google.com/apis",
+      "title": "Google Cloud APIs",
+      "snippet": "Allows you to manage the execution, dispatch, and delivery of a large number of distributed tasks. Cloud Location Finder API. Provides programmatic access to up ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E3",
+        "E4"
+      ],
+      "rationale": "Google Cloud APIs catalog includes Geocoding, Geolocation, and Maps-related APIs, providing contextual support for address lookup and device location services, but it does not describe the claimed dispatch workflow directly."
+    },
+    {
+      "url": "https://mapsplatform.google.com/awards/",
+      "title": "Google Maps Platform Awards 2025",
+      "snippet": "GeocodingConvert addresses to geographic coordinates or the reverse. GeolocationReturn the location of a device without relying on GPS, using geospatial data ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Awards page snippet mentions Geocoding and Geolocation capabilities, which are relevant to address-to-coordinate and device-location features, but the page is promotional and not detailed evidence of the claim limitations."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/quick-builder/",
+      "title": "Build Maps in Minutes with Quick Builder",
+      "snippet": "Build complete solutions in just a few clicks. Customize and deploy location-based experiences like Locator Plus and Address Selection.",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E6"
+      ],
+      "rationale": "Quick Builder page references location-based experiences like Locator Plus and Address Selection, which are adjacent to address lookup and map display behavior, but it does not describe the claimed dispatch logic."
+    },
+    {
+      "url": "https://docs.cloud.google.com/architecture/agentic-ai-system-with-grounding-using-maps",
+      "title": "Build trusted AI agents with Google Maps Platform",
+      "snippet": "The system builds travel plans for places that users indicate in their prompt. The plan considers the user's schedule, the geographic location of the places, ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E5"
+      ],
+      "rationale": "Architecture Center page about building trusted AI agents with Google Maps Platform and travel plans based on user prompts and geographic location; relevant to location-based decisioning, but not the specific dispatch system."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/introducing-data-driven-styling/",
+      "title": "style Google map boundaries to convey key information",
+      "snippet": "Data-driven styling is a new capability that enables you to style your maps to visually convey key information to your users.",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Data-driven styling page concerns styling map boundaries and conveying information on maps; it is map-related but does not evidence storing or transmitting location data in a dispatch workflow."
+    },
+    {
+      "url": "https://mapsplatform.google.com/intl/fr_fr/solutions/visualize-data/",
+      "title": "Solutions Maps : Visualiser des données géospatiales",
+      "snippet": "Découvrez comment faciliter la prise de décisions et améliorer les performances opérationnelles en affichant des données de localisation sur une carte avec ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Geospatial data visualization solution page about displaying location data on a map; relevant to map display of location-based data, but not the claimed terminal-to-server dispatch behavior."
+    },
+    {
+      "url": "https://mapsplatform.google.com/intl/pt-BR_br/solutions/visualize-data/",
+      "title": "Soluções do Maps: Veja dados geoespaciais: Plataforma ...",
+      "snippet": "Aprenda a exibir dados de local em um mapa para tomar decisões e melhorar a eficiência operacional com a Plataforma Google Maps.",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Portuguese geospatial visualization page about displaying location data on a map; supports general map display of location data but not the specific claim limitations."
+    },
+    {
+      "url": "https://mapsplatform.google.com/intl/it_it/solutions/visualize-data/",
+      "title": "Soluzioni per le mappe: visualizza i dati geospaziali",
+      "snippet": "Scopri come utilizzare Google Maps Platform per mostrare i dati sulla posizione su una mappa, così da prendere le giuste decisioni e migliorare l'efficienza ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Italian geospatial visualization page about showing location data on a map; only general contextual support for map/location display."
+    },
+    {
+      "url": "https://docs.cloud.google.com/appengine/docs/standard/reference/dispatch-yaml",
+      "title": "dispatch.yaml Configuration File | App Engine standard ...",
+      "snippet": "The dispatch.yaml allows you to override routing rules. You can use the dispatch.yaml to send incoming requests to a specific service (formerly known as ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "App Engine dispatch.yaml documentation concerns request routing/dispatch rules, which is conceptually adjacent to dispatch systems, but it is not about location-based data or maps."
+    },
+    {
+      "url": "https://developers.google.com/resources/api-libraries/documentation/appengine/v1/csharp/latest/classGoogle_1_1Apis_1_1Appengine_1_1v1_1_1Data_1_1Application.html",
+      "title": "Google.Apis.Appengine.v1.Data.Application Class Reference",
+      "snippet": "Location from which this application runs. Application instances run out of the data centers in the specified location, which is also where all of the ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "App Engine Application class reference includes dispatch rules for HTTP requests, which is only loosely related to dispatching and not to the claimed location/map behavior."
+    },
+    {
+      "url": "https://developers.google.com/assistant/actions/api/reference/rest/v2/projects/sendInteraction",
+      "title": "Method: projects.sendInteraction | Conversational Actions",
+      "snippet": "Surface used for interacting with the Action. location. object ( Location ). Device location such as latitude, longitude, and formatted address.",
+      "score": 0.25,
+      "matched_elements": [
+        "E4",
+        "E5"
+      ],
+      "rationale": "Conversational Actions sendInteraction includes device location fields and interaction payloads, which is adjacent to transmitting location data, but it is not a Maps Platform dispatch/map workflow."
+    },
+    {
+      "url": "https://cloud.google.com/terms/services",
+      "title": "Google Cloud Platform Services Summary",
+      "snippet": "Cloud Storage: Cloud Storage is a RESTful service for storing and accessing your data on Google's infrastructure. The service combines the performance and ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E4"
+      ],
+      "rationale": "Google Cloud services summary lists App Engine and Cloud Storage among many services; it is too general to directly evidence the claim but provides minor contextual support for server-side storage/dispatch infrastructure."
+    },
+    {
+      "url": "https://docs.cloud.google.com/tasks/docs/reference/rest/v2/projects.locations.queues.tasks",
+      "title": "REST Resource: projects.locations.queues.tasks",
+      "snippet": "The default deadline depends on the scaling type of the service: 10 minutes for standard apps with automatic scaling, 24 hours for standard apps ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Cloud Tasks task resource and queue dispatch documentation describe scheduled work and dispatching tasks, which is adjacent to conditional dispatch behavior, but not location/map-specific."
+    },
+    {
+      "url": "https://docs.cloud.google.com/dotnet/docs/reference/Google.Cloud.Tasks.V2/latest/Google.Cloud.Tasks.V2.Queue",
+      "title": "Google Cloud Tasks v2 API - Class Queue (3.6.0)",
+      "snippet": "A queue is a container of related tasks. Queues are configured to manage how those tasks are dispatched. Configurable properties include rate limits, retry ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Cloud Tasks Queue class describes how tasks are dispatched and rate-limited, which is only loosely analogous to criteria-based dispatch in the claim."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/legacy/places-migration-nearby",
+      "title": "Migrate to the new Nearby Search | Maps JavaScript API",
+      "snippet": "This page explains the differences between nearby search as used in the Place class (new) and the PlacesService (legacy), and provides some code snippets ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Nearby Search migration page is only loosely related to conditional dispatch/search behavior; it mentions place search functionality but not the claim's dispatch criteria."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/legacy/places-migration-details",
+      "title": "Migrate to the new Place Details | Maps JavaScript API",
+      "snippet": "The request uses a callback, and includes a required conditional check on PlacesServiceStatus . The needed place data fields are specified in the request body.",
+      "score": 0.25,
+      "matched_elements": [
+        "E5"
+      ],
+      "rationale": "Place Details migration page is adjacent to location/place lookup and conditional request handling, but does not directly describe the claimed dispatch logic."
+    },
+    {
+      "url": "https://cloud.google.com/maps-platform/terms/other/maps-included-apis",
+      "title": "Google Maps",
+      "snippet": "The Maps API for Business licence agreement includes the use of the following API(s):. Google Maps JavaScript API ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Lists included Maps APIs such as Geocoding and JavaScript API, which is contextual support for address-to-location correlation and map display, but not the operational claim steps."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/more-control-loading-maps-javascript-api/",
+      "title": "More Control Loading the Maps JavaScript API",
+      "snippet": "We're sharing three big improvements to how the Maps JavaScript API is loaded: an API for flexible library loading, the new inline bootstrap loader, and a set ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Blog page about loading the Maps JavaScript API and interactive maps; relevant only as contextual evidence for map display functionality."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/2023-accessibility-updates-maps-javascript-api/",
+      "title": "2023 Accessibility updates in the Maps JavaScript API",
+      "snippet": "These updates enable more inclusive maps for vision-impaired users, along with anyone using a screen reader or keyboard navigation.",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Blog discusses accessibility updates for the Maps JavaScript API and interactive map use, which is only contextual to the map display limitations."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/how-refresh-local-info-based-user-and-business-needs-local-context/",
+      "title": "How to refresh local info based on user and business ...",
+      "snippet": "Local Context is available as a library for the Maps JavaScript API at no cost during the beta period. To get started, take a look at our ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Blog about Local Context and refreshing local info on maps; adjacent to map display and location-based content, but not the claimed dispatch workflow."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/streamline-the-use-of-the-maps-javascript-api-within-your-react-applications/",
+      "title": "Streamline the use of the Maps JavaScript API within your ...",
+      "snippet": "3D city map with an API key text field, a key icon, and location. Start building in seconds with a Maps Demo Key — no credit card required.",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Blog about using the Maps JavaScript API in React apps; only general support for map display on a terminal."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/access-3d-maps-in-maps-javascript-api-starting-today/",
+      "title": "Access 3D Maps in Maps JavaScript API starting today",
+      "snippet": "This release gives Google Maps Platform developers access to a real-world canvas to build on, powered by Google's rendering technology. Explore ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Blog announces 3D Maps in the Maps JavaScript API, which is related to map display but not the claim's dispatch or location-data transmission steps."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/google-maps-platform-javascript-api-and-typescript/",
+      "title": "Google Maps Platform JavaScript API and TypeScript",
+      "snippet": "3D city map with an API key text field, a key icon, and location. Start building in seconds with a Maps Demo Key — no credit card required.",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "General blog about the Maps JavaScript API and TypeScript; only contextual evidence for map display functionality."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/loading-google-maps-platform-javascript-modern-web-applications/",
+      "title": "Loading Google Maps Platform JavaScript in Modern Web ...",
+      "snippet": "We are pleased to announce two open source libraries that make it easier for you to use the Maps JavaScript API in modern web apps.",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Blog about loading the Maps JavaScript API in modern web apps; relevant only as background for map display on a client terminal."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/reference",
+      "title": "Google Maps JavaScript API v3 Reference",
+      "snippet": "Last updated Monday, April 27, 2026. This is an index of all the classes, methods, and interfaces in the Maps JavaScript API version 3.64 (weekly channel).",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Reference index for Maps JavaScript API classes and map-related features; contextual support for map display, but not the claimed workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/deprecations",
+      "title": "Deprecations - Maps Platform",
+      "snippet": "To continue using maps on your site, migrate to the Maps JavaScript API v3. Learn more about upgrading Your Maps JavaScript API Application from v2 to v3.",
+      "score": 0.25,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Deprecations page mentions Maps JavaScript API and related products; only tangentially relevant to map display functionality."
+    },
+    {
+      "url": "https://docs.cloud.google.com/vertex-ai/generative-ai/docs/grounding/grounding-with-google-maps",
+      "title": "Grounding with Google Maps in Vertex AI",
+      "snippet": "This code sample demonstrates how to use Grounding with Google Maps to ground your model's responses. Search results can be customized for a ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E1",
+        "E2"
+      ],
+      "rationale": "Grounding with Google Maps is location/search related, but the page is about generative AI grounding rather than dispatch, geocoding, or map display workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/map-ids/mapid-over",
+      "title": "Map ID overview | Maps SDK for Android",
+      "snippet": "You can make updates to your map style in the Cloud console, and changes appear ... automatically, without the need for any app updates by your customers.",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Official documentation notes map style updates can appear automatically without app updates, which is adjacent to automatic map/display behavior but not the claim's dispatch logic."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/cloud-customization/update-legacy",
+      "title": "Verify an auto-migrated map style | Maps SDK for Android",
+      "snippet": "To check if your automatically migrated map styles work, do the following: In the style editor, open the updated map style. Map features that have custom styles ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Discusses automatically migrated map styles and updated map style behavior, which is only loosely related to automatic map display."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/android-sdk/versions",
+      "title": "Maps SDK for Android versions",
+      "snippet": "Google Maps Platform SDKs are regularly updated with new features, bug fixes, and performance improvements. · For mission-critical apps, link to the latest dot ...",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Release notes mention SDK updates and performance improvements for Maps SDK, providing contextual support for map display software but not the claimed dispatch workflow."
+    },
+    {
+      "url": "https://console.cloud.google.com/marketplace/product/google/navigationsdk.googleapis.com?hl=it",
+      "title": "Navigation SDK – Marketplace",
+      "snippet": "Provide a navigation user experience. Presents a user interface to a driver that takes them through the route, providing a map, turn card guidance, and more.",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Marketplace listing snippet says the Navigation SDK provides a navigation user experience with a map and turn card guidance, which is relevant to map display but is not detailed product documentation."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/improving-navigation-experience-hyperlocal-context/",
+      "title": "Improving the navigation experience with hyperlocal context",
+      "snippet": "Building outlines and building numbers are visible during the driver's turn-by-turn guidance, minimizing last mile errors and failed deliveries.",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "Blog content about navigation experience and turn-by-turn guidance with building outlines/numbers is contextually related to map display/navigation, but not direct evidence for the claim limitations."
+    },
+    {
+      "url": "https://mapsplatform.google.com/resources/blog/turn-map-ideas-into-custom-coded-prototypes-in-minutes-no-coding-required/",
+      "title": "Turn map ideas into custom-coded prototypes in minutes, ...",
+      "snippet": "We're excited to introduce Builder agent—our powerful new geospatial AI agent that allows anyone to easily build new prototypes in minutes.",
+      "score": 0.25,
+      "matched_elements": [
+        "E6"
+      ],
+      "rationale": "General Maps Platform product page mentions dynamic maps and interactive map products, which is only weakly relevant to automatic map display."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/places/web-service/client-library-examples",
+      "title": "Places API (New) client library examples",
+      "snippet": "This page has examples of how to use the Places API (New) client libraries to call the following services:",
+      "score": 0.2,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Places API client library examples are official docs for web service calls, but they do not describe the claimed dispatch/map workflow."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/streetview/static-web-api-best-practices",
+      "title": "Best Practices Using Street View Static API",
+      "snippet": "Google Maps Platform offers static web APIs and web services for embedding images and accessing geographic data. · Static web APIs generate images based on URL ...",
+      "score": 0.2,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Static web API best practices are official Maps Platform docs, but only tangentially related to geographic data access and not the claim limitations."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/elevation/web-service-best-practices",
+      "title": "Best Practices Using Elevation API Web Services",
+      "snippet": "The Google Maps Platform web services are a collection of HTTP interfaces to Google services providing geographic data for your maps applications.",
+      "score": 0.2,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Elevation API web service best practices discuss geographic data via HTTP interfaces, which is only loosely related to location data transmission."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/datasets/web-service-best-practices",
+      "title": "Best Practices Using Maps Datasets API Web Services",
+      "snippet": "This guide describes some common practices useful for setting up your web service requests and processing service responses.",
+      "score": 0.2,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Maps Datasets API web services are official geographic-data docs, but they do not address the claimed terminal-to-terminal dispatch behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/android-sdk/release-notes",
+      "title": "Navigation SDK for Android release notes",
+      "snippet": "... SDK receives new valid location updates. ... This change was done to make Driver SDK updates easier to test and integrate for customers.",
+      "score": 0.2,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Release notes mention valid location updates and navigation SDK behavior, but the page is mostly changelog content rather than direct feature documentation."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/navigation/ios-sdk/release-notes",
+      "title": "Navigation SDK for iOS release notes",
+      "snippet": "The SDK has improved functionality with bug fixes, API updates for better navigation accuracy and developer control, and enhanced developer tools like Swift ...",
+      "score": 0.2,
+      "matched_elements": [
+        "E2",
+        "E6"
+      ],
+      "rationale": "Release notes for Navigation SDK iOS are only weakly relevant to map display/location update behavior."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/mobility/services/resources/relnotes_driver_sdk_android",
+      "title": "Driver SDK for Android Release Notes",
+      "snippet": "Navigation SDK and Driver SDK running on your Android apps will support a minimum Android 5 (API level 21) until June 30, 2023. After June 30, 2023, we will ...",
+      "score": 0.2,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Release notes mention driver SDK and navigation SDK support, but provide only indirect evidence for the claim limitations."
+    },
+    {
+      "url": "https://developers.google.com/maps/documentation/javascript/dds-boundaries/coverage",
+      "title": "Google boundaries coverage | Maps JavaScript API",
+      "snippet": "The region coverage viewer lets you search for boundaries by name. Find boundaries by using the search box; click anywhere on the map to see information.",
+      "score": 0.1,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Boundary coverage viewer is a Maps JavaScript API page about map data coverage, with only minimal relevance to the claim."
+    },
+    {
+      "url": "https://developers.google.com/nearby/fast-pair/specifications/extensions/fmdn",
+      "title": "Find Hub Network Accessory Specification | Fast Pair",
+      "snippet": "The Find Hub Network (FHN) accessory specification defines an end-to-end encrypted approach for tracking beaconing Bluetooth Low Energy (BLE) devices.",
+      "score": 0.1,
+      "matched_elements": [
+        "E3"
+      ],
+      "rationale": "Find Hub Network accessory specification concerns device location tracking over BLE, which is not the claimed Google Maps dispatch system."
+    }
+  ]
+}

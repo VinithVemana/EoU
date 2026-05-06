@@ -1,0 +1,83 @@
+{
+  "count": 7,
+  "subproducts": [
+    {
+      "name": "Geolocation API",
+      "vocabulary": [
+        "location",
+        "cell tower",
+        "Wi‑Fi",
+        "accuracy",
+        "lat/lng"
+      ],
+      "rationale": "The claim’s second terminal receives location-based data from a location system based on the terminal’s location, which aligns most closely with Google Maps Platform’s Geolocation API documentation for deriving device location from network signals."
+    },
+    {
+      "name": "Geocoding API",
+      "vocabulary": [
+        "address",
+        "geocode",
+        "place ID",
+        "results",
+        "latlng"
+      ],
+      "rationale": "The first terminal correlates a received address to location-based data, which is the core function of Geocoding API documentation that converts addresses into geographic coordinates and related location data."
+    },
+    {
+      "name": "Maps JavaScript API",
+      "vocabulary": [
+        "map display",
+        "markers",
+        "pan",
+        "zoom",
+        "custom maps",
+        "display"
+      ],
+      "rationale": "The claim requires a map display unit that automatically displays a map including the first address, matching the Maps JavaScript API surface for rendering interactive maps in a display unit."
+    },
+    {
+      "name": "Maps SDK for Android",
+      "vocabulary": [
+        "map display",
+        "android",
+        "camera",
+        "markers",
+        "location"
+      ],
+      "rationale": "If the second terminal is a mobile device, the Android SDK docs would evidence automatic map display and device-location-driven map updates on the terminal."
+    },
+    {
+      "name": "Maps SDK for iOS",
+      "vocabulary": [
+        "map display",
+        "ios",
+        "camera",
+        "markers",
+        "location"
+      ],
+      "rationale": "If the second terminal is an iPhone or iPad, the iOS SDK docs would evidence the same terminal-side map display and location-based rendering behavior."
+    },
+    {
+      "name": "Places API (New)",
+      "vocabulary": [
+        "place details",
+        "search",
+        "autocomplete",
+        "place data",
+        "location"
+      ],
+      "rationale": "The claim’s use of location-based data and address correlation could also be supported by Places documentation where addresses and place records are resolved to structured location data."
+    },
+    {
+      "name": "Routes API",
+      "vocabulary": [
+        "route",
+        "directions",
+        "travel time",
+        "origin",
+        "destination"
+      ],
+      "rationale": "Because the claim is framed as a dispatch system transmitting event data and location data between terminals, Routes documentation may evidence dispatch-adjacent routing and travel-related location workflows."
+    }
+  ]
+}
