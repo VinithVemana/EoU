@@ -45,6 +45,14 @@ Usage examples (always invoked via the venv pinned in the global
     python -m claim_url --product "YouTube TV" --patent "US-10123456-B2"
     python -m claim_url --product "YouTube TV" --patent "US-10123456-B2" --claim-number 3
     python -m claim_url --patent "US-20120212660-A1" --claim-number 1   # no --product → LLM suggests
+
+    # Spec context (auto-enabled with --patent; feeds relevant description paragraphs
+    # to the extractor and rewriter so they use concrete implementation vocabulary).
+    python -m claim_url --product "YouTube TV" --patent "US-10123456-B2" --no-spec-context
+    # --max-spec-paragraphs controls how many description paragraphs are selected (default 10)
+    python -m claim_url --product "YouTube TV" --patent "US-10123456-B2" --max-spec-paragraphs 15
+    # --llm-spec-context: use LLM (one extra call) for semantic paragraph selection instead of keywords
+    python -m claim_url --product "YouTube TV" --patent "US-10123456-B2" --llm-spec-context
 """
 
 from __future__ import annotations
@@ -78,8 +86,9 @@ from claim_url.finder import ClaimURLFinder
 from claim_url.llm import LLMClient
 from claim_url.logging_setup import configure_logging
 from claim_url.models import FinderResult
-from claim_url.pcs_api import fetch_claim_from_patent
+from claim_url.pcs_api import fetch_claim_from_patent, fetch_patent_claim_and_description
 from claim_url.serp import SerpApiClient
+from claim_url.spec_context import SpecContext, build_spec_context
 from claim_url.trace import TraceWriter
 from claim_url.utils import dedupe_keep_order, normalize_domain
 
@@ -134,6 +143,31 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=1,
         metavar="N",
         help="Claim number to fetch when --patent is used (1-indexed). Default: 1.",
+    )
+
+    parser.add_argument(
+        "--spec-context", action=argparse.BooleanOptionalAction, default=True,
+        help=(
+            "When --patent is used, fetch the patent description and inject "
+            "relevant paragraphs into the extractor and rewriter prompts. "
+            "Grounds abstract claim language in concrete spec terminology. "
+            "Default: on. Disable with --no-spec-context."
+        ),
+    )
+    parser.add_argument(
+        "--max-spec-paragraphs", type=int, default=10,
+        help=(
+            "Max description paragraphs selected as spec context when "
+            "--patent is used. Default: 10."
+        ),
+    )
+    parser.add_argument(
+        "--llm-spec-context", action="store_true", default=False,
+        help=(
+            "Use the LLM (one extra call) for semantic paragraph selection "
+            "instead of keyword overlap. More accurate but costs one additional "
+            "LLM call. Default: off."
+        ),
     )
 
     parser.add_argument(
@@ -336,42 +370,48 @@ def _read_claim(args: argparse.Namespace) -> str:
     raise ValueError("One of --claim, --claim-file, or --patent is required")
 
 
-def _fetch_patent_claim(patent_number: str, claim_number: int) -> str:
-    """Fetch claim text from PCS API. Reads credentials from environment."""
+def _pcs_creds() -> tuple[str, str, str]:
+    """Return (api_key, base_url, port) from env; raise ConfigError if missing."""
     import os
     api_key = os.environ.get(ENV_PCS_API_KEY, "")
     base_url = os.environ.get(ENV_PCS_BASE_URL, "")
     port = os.environ.get(ENV_PCS_PORT, "")
-
-    missing = [
-        name
-        for name, val in [
-            (ENV_PCS_API_KEY, api_key),
-            (ENV_PCS_BASE_URL, base_url),
-        ]
-        if not val
-    ]
+    missing = [name for name, val in [(ENV_PCS_API_KEY, api_key), (ENV_PCS_BASE_URL, base_url)] if not val]
     if missing:
         raise ClaimURLError(
             f"--patent requires env vars: {', '.join(missing)}. "
             "Set them in your .env file or environment."
         )
+    return api_key, base_url, port
 
-    LOG.info(
-        "Fetching claim %d from patent '%s' via PCS API…",
-        claim_number,
-        patent_number,
-    )
+
+def _fetch_patent_claim(patent_number: str, claim_number: int) -> str:
+    """Fetch claim text only from PCS API."""
+    api_key, base_url, port = _pcs_creds()
+    LOG.info("Fetching claim %d from patent '%s' via PCS API…", claim_number, patent_number)
     try:
         return fetch_claim_from_patent(
-            patent_number,
-            claim_number,
-            api_key=api_key,
-            base_url=base_url,
-            port=port,
+            patent_number, claim_number, api_key=api_key, base_url=base_url, port=port,
         )
     except Exception as exc:
         raise ClaimURLError(f"Patent claim lookup failed: {exc}") from exc
+
+
+def _fetch_patent_claim_and_description(
+    patent_number: str, claim_number: int
+) -> tuple[str, list[str]]:
+    """Fetch claim text + all description paragraphs in one PCS API round-trip."""
+    api_key, base_url, port = _pcs_creds()
+    LOG.info(
+        "Fetching claim %d and description from patent '%s' via PCS API…",
+        claim_number, patent_number,
+    )
+    try:
+        return fetch_patent_claim_and_description(
+            patent_number, claim_number, api_key=api_key, base_url=base_url, port=port,
+        )
+    except Exception as exc:
+        raise ClaimURLError(f"Patent lookup failed: {exc}") from exc
 
 
 def _resolve_product(
@@ -590,9 +630,22 @@ def main(argv: Optional[list[str]] = None) -> int:
         if not args.patent and not args.claim and not args.claim_file:
             parser.error("one of --patent / --claim / --claim-file is required")
 
+        _desc_paragraphs: list[str] = []
         if args.patent:
-            claim = _fetch_patent_claim(args.patent, args.claim_number)
-            LOG.info("Fetched claim %d from patent %s (%d chars)", args.claim_number, args.patent, len(claim))
+            if args.spec_context:
+                claim, _desc_paragraphs = _fetch_patent_claim_and_description(
+                    args.patent, args.claim_number
+                )
+                LOG.info(
+                    "Fetched claim %d from patent %s (%d chars, %d description paragraphs)",
+                    args.claim_number, args.patent, len(claim), len(_desc_paragraphs),
+                )
+            else:
+                claim = _fetch_patent_claim(args.patent, args.claim_number)
+                LOG.info(
+                    "Fetched claim %d from patent %s (%d chars)",
+                    args.claim_number, args.patent, len(claim),
+                )
         else:
             claim = _read_claim(args)
 
@@ -625,6 +678,17 @@ def main(argv: Optional[list[str]] = None) -> int:
                 timeout=args.fetch_timeout,
                 max_workers=args.fetch_workers,
                 disk_cache=fetch_cache,
+            )
+
+        spec_context: Optional[SpecContext] = None
+        if _desc_paragraphs:
+            spec_context = build_spec_context(
+                patent_number=args.patent,
+                claim_number=args.claim_number,
+                claim_text=claim,
+                paragraphs=_desc_paragraphs,
+                max_paragraphs=args.max_spec_paragraphs,
+                llm=llm if args.llm_spec_context else None,
             )
 
         product = _resolve_product(
@@ -666,6 +730,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 product=product,
                 top_k=args.top_k,
                 domain_override=domain_override,
+                spec_context=spec_context,
             )
         finally:
             if page_fetcher is not None:

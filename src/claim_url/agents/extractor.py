@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Optional
 
 from claim_url.errors import ClaimURLError
 from claim_url.llm import LLMClient
@@ -43,6 +44,16 @@ CLAIM:
 \"\"\"
 {claim}
 \"\"\"
+{spec_context_section}"""
+
+_SPEC_CONTEXT_BLOCK = """\
+
+Additional context from the patent description (use technical terms and
+implementation detail below to produce more precise element labels and keywords —
+do not copy text verbatim; let it inform vocabulary choices):
+\"\"\"
+{spec_context}
+\"\"\"
 """
 
 
@@ -55,13 +66,18 @@ class ClaimElementExtractor:
     def __init__(self, llm: LLMClient) -> None:
         self._llm = llm
 
-    def extract(self, claim: str) -> list[ClaimElement]:
+    def extract(self, claim: str, *, spec_context: Optional[str] = None) -> list[ClaimElement]:
         if not claim or not claim.strip():
             raise ValueError("claim text is required")
 
+        spec_section = (
+            _SPEC_CONTEXT_BLOCK.format(spec_context=spec_context.strip())
+            if spec_context and spec_context.strip()
+            else ""
+        )
         text = self._llm.complete(
             system=SYSTEM_PROMPT,
-            prompt=PROMPT_TEMPLATE.format(claim=claim),
+            prompt=PROMPT_TEMPLATE.format(claim=claim, spec_context_section=spec_section),
             max_tokens=2500,
             temperature=0.0,
             json_mode=True,

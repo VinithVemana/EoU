@@ -26,6 +26,7 @@ from claim_url.models import (
     SearchResult,
 )
 from claim_url.serp import SerpApiClient
+from claim_url.spec_context import SpecContext, build_spec_context
 
 __version__ = "1.0.0"
 
@@ -45,5 +46,7 @@ __all__ = [
     "ScoredURL",
     "SearchResult",
     "SerpApiClient",
+    "SpecContext",
+    "build_spec_context",
     "__version__",
 ]

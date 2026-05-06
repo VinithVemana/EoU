@@ -29,6 +29,7 @@ from claim_url.utils import dedupe_keep_order, parse_json_object
 
 if TYPE_CHECKING:
     from claim_url.agents.subproduct import SubProduct
+    from claim_url.spec_context import SpecContext
 
 
 LOG = logging.getLogger("claim-url-finder")
@@ -55,7 +56,7 @@ queries; element labels alone lose system-level framing):
 \"\"\"
 {claim}
 \"\"\"
-
+{spec_context_section}
 Claim elements (decomposed limitations):
 {elements_json}
 
@@ -108,6 +109,17 @@ Schema:
 """
 
 
+_SPEC_CONTEXT_BLOCK = """\
+Relevant patent description context (technical implementation detail behind
+the claim — use this to pick product vocabulary matching what vendors actually
+call these features; e.g. spec says "ranking by predicted engagement" when
+claim says "ordering items by probability measure"):
+\"\"\"
+{spec_context}
+\"\"\"
+"""
+
+
 class QueryRewriteAgent:
     def __init__(self, llm: LLMClient, *, queries_per_element: int = 3) -> None:
         if queries_per_element < 1:
@@ -123,6 +135,7 @@ class QueryRewriteAgent:
         elements: list[ClaimElement],
         domains: list[DomainCandidate],
         subproducts: Optional[list["SubProduct"]] = None,
+        spec_context: Optional[str] = None,
     ) -> list[ClaimElement]:
         """Mutates ``elements`` in place with rewritten queries; returns the same list.
 
@@ -144,12 +157,18 @@ class QueryRewriteAgent:
             for sp in (subproducts or [])
         ]
 
+        spec_section = (
+            _SPEC_CONTEXT_BLOCK.format(spec_context=spec_context.strip())
+            if spec_context and spec_context.strip()
+            else ""
+        )
         prompt = PROMPT_TEMPLATE.format(
             product=product,
             claim=claim.strip(),
             domains_json=json.dumps(domains_payload, indent=2),
             subproducts_json=json.dumps(subproducts_payload, indent=2)
                 if subproducts_payload else "[]  (none provided)",
+            spec_context_section=spec_section,
             elements_json=json.dumps(elements_payload, indent=2),
             n=self.queries_per_element,
         )

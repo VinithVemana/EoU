@@ -19,6 +19,7 @@ from claim_url.fetch import PageFetcher
 from claim_url.llm import LLMClient
 from claim_url.models import DomainCandidate, FinderResult
 from claim_url.serp import SerpApiClient
+from claim_url.spec_context import SpecContext
 from claim_url.trace import TraceWriter
 
 
@@ -89,6 +90,7 @@ class ClaimURLFinder:
         product: str,
         top_k: int = 10,
         domain_override: Optional[list[str]] = None,
+        spec_context: Optional[SpecContext] = None,
     ) -> FinderResult:
         product = product.strip()
         if not product:
@@ -106,8 +108,18 @@ class ClaimURLFinder:
                 "domains": [asdict(d) for d in domains],
             })
 
+        spec_text = spec_context.formatted() if spec_context else None
+        if spec_text:
+            LOG.info(
+                "Spec context: %d paragraphs (%s selection) from patent=%s claim=%d",
+                len(spec_context.relevant_paragraphs),
+                spec_context.selection_method,
+                spec_context.patent_number,
+                spec_context.claim_number,
+            )
+
         LOG.info("Extracting claim elements")
-        elements = self.element_extractor.extract(claim)
+        elements = self.element_extractor.extract(claim, spec_context=spec_text)
         LOG.info("Extracted %d claim elements", len(elements))
         if self._trace is not None:
             self._trace.write("02_elements.json", {
@@ -134,6 +146,7 @@ class ClaimURLFinder:
             elements=elements,
             domains=domains,
             subproducts=subproducts or None,
+            spec_context=spec_text,
         )
         rewritten_count = sum(1 for e in elements if e.search_queries)
         LOG.info(

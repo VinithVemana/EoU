@@ -194,6 +194,69 @@ def fetch_claim_from_patent(
     return text
 
 
+def fetch_patent_claim_and_description(
+    patent_number: str,
+    claim_number: int = 1,
+    *,
+    api_key: str,
+    base_url: str,
+    port: str,
+) -> tuple[str, list[str]]:
+    """Return ``(claim_text, description_paragraphs)`` in one API round-trip.
+
+    Args:
+        patent_number:  Patent identifier, e.g. ``"US-20120212660-A1"``.
+        claim_number:   1-indexed claim to fetch. Defaults to 1.
+        api_key:        PCS API key.
+        base_url:       PCS API base URL.
+        port:           PCS API port string.
+
+    Returns:
+        Tuple of (claim_text, paragraphs) where paragraphs is a list of
+        plain-string description paragraphs (empty list when not available).
+
+    Raises:
+        ValueError: Patent not found, no claim XML, or claim number absent.
+        requests.HTTPError: HTTP-level failure talking to the PCS API.
+    """
+    session = requests.Session()
+    creds = {"api_key": api_key, "base_url": base_url, "port": port}
+
+    pn = patent_number.strip()
+    result = search_with_api_key(session, f'pn:"{pn}"', **creds)
+    docs = result.get("docs", [])
+    if not docs:
+        raise ValueError(f"Patent '{pn}' not found via PCS API.")
+    doc = docs[0]
+
+    # --- Claim ---
+    clm = doc.get("clm")
+    clm_xml = clm[0] if isinstance(clm, list) else clm
+    if not clm_xml:
+        raise ValueError(f"No claim XML found for patent '{pn}'.")
+    parsed_claims = parse_claims_with_api_key(session, clm_xml, **creds)
+    claim_dict = _extract_claim(parsed_claims, claim_number)
+    claim_text = _blocks_to_text(claim_dict.get("blocks", []))
+    if not claim_text.strip():
+        raise ValueError(
+            f"Claim {claim_number} of '{pn}' parsed but produced empty text."
+        )
+
+    # --- Description (graceful degradation: empty list when absent) ---
+    desc = doc.get("desc")
+    desc_xml = desc[0] if isinstance(desc, list) else desc
+    paragraphs: list[str] = []
+    if desc_xml:
+        parsed_desc = parse_description_with_api_key(session, desc_xml, **creds)
+        paragraphs = [
+            str(p).strip()
+            for p in parsed_desc.get("paragraphs", [])
+            if str(p).strip()
+        ]
+
+    return claim_text, paragraphs
+
+
 def _pcs_creds_from_env() -> dict:
     return {
         "api_key": os.environ.get("PCS_API_KEY", ""),
