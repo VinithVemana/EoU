@@ -48,7 +48,12 @@ llm/                 # see llm/CLAUDE.md
 - `--domain-workers` / `--search-workers` / `--score-workers` — thread-pool sizes for parallel SerpApi probes / parallel `(query, domain)` searches / parallel Agent 2 batches.
 - `--exclude-url-patterns` — comma-separated regex blocklist applied in `OfficialDomainSearch._filter_results`.
 - `--cache-dir` / `--no-cache` — disk cache for SerpApi/LLM/page bodies. ON by default with dir `./.claim_url_cache`.
-- `--trace-dir DIR` — off by default. When set, `ClaimURLFinder` writes seven numbered JSON artifacts (`01_domains` … `07_final`) under `DIR`. Use to forensics why a URL was missed: per-(query, domain) raw SerpApi results live in `04_search.json`, full pre-top-k score list in `06_scoring.json`.
+- `--trace-dir DIR` — off by default. When set, `ClaimURLFinder` writes numbered JSON artifacts (`01_domains`, `02_elements`, `02b_subproducts`, `03_queries`, `04_search`, `05_pagefetch`, `06_scoring`, `07_final`) under `DIR`. Use for forensics why a URL was missed: per-(query, domain) raw SerpApi results live in `04_search.json`, full pre-top-k score list in `06_scoring.json`.
+- `--subproduct-probe` / `--no-subproduct-probe` — sub-product / feature-surface probe between Extractor and Rewriter. Default ON. Adds one LLM call but distributes queries across umbrella-product surfaces.
+- `--max-subproducts` (default 8) — cap on sub-product surfaces returned by the probe.
+- `--diversity-prefix-segments` (default 4) / `--diversity-per-prefix` (default 3) — within tied-score tiers, cap URLs sharing the first N path segments at M. Prevents one feature area from drowning the top-k.
+- `--element-coverage` / `--no-element-coverage` — after top-k slice, append a URL per uncovered claim element (score >= floor). Default ON.
+- `--coverage-score-floor` (default 0.5) — minimum score for the coverage guarantee to append a URL.
 - `--output {table,json}` and `--log-file PATH` are independent; both can be set.
 
 If you add a new flag, update the docstring at the top of `cli.py` (per global mandatory rule) and the example invocations in the root `CLAUDE.md`.

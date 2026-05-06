@@ -104,9 +104,23 @@ $PY -m claim_url --product X --claim-file c.txt --output json \
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --cache-dir .claim_url_cache
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --no-cache
 
-# Per-stage JSON artifacts (forensics): dumps 01_domains, 02_elements, 03_queries,
-# 04_search (per-(query, domain) URL list), 05_pagefetch, 06_scoring, 07_final
+# Per-stage JSON artifacts (forensics): dumps 01_domains, 02_elements,
+# 02b_subproducts, 03_queries, 04_search (per-(query, domain) URL list),
+# 05_pagefetch, 06_scoring, 07_final
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --trace-dir trace/run1
+
+# Sub-product probe (default ON) — maps the claim onto the sub-surfaces of an
+# umbrella product and forces the rewriter to cover each. Helps when --product is
+# something like "Google Maps Platform" or "AWS" that has dozens of sub-APIs.
+$PY -m claim_url --product "AWS" --claim-file claim.txt --max-subproducts 12
+$PY -m claim_url --product "Slack" --claim-file claim.txt --no-subproduct-probe
+
+# Top-k post-processors (both default ON):
+#   diversity guard:   within tied-score tiers, cap URLs per path-prefix bucket
+#   element coverage:  append a URL per uncovered claim element (above score floor)
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
+    --diversity-per-prefix 1 --diversity-prefix-segments 5
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt --no-element-coverage
 ```
 
 ---

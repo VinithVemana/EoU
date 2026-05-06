@@ -6,16 +6,21 @@ Project-level guidance for Claude Code. Per-folder CLAUDE.md files own locality-
 
 `claim_url` is a Python package that finds official-source URLs evidencing patent-claim limitations for a given product. The previous monolithic `claim_url.py` (~2000 lines) was refactored into a `src/`-layout package with isolated, testable components.
 
-### Pipeline (six stages)
+### Pipeline (seven stages + post-process)
 
 1. **Agent 1** (`agents/domain.py::DomainIdentificationAgent`) — discover vendor/official domains via SerpApi probes + LLM classification.
 2. **Extractor** (`agents/extractor.py::ClaimElementExtractor`) — decompose claim into 4–8 `ClaimElement`s.
-3. **Rewriter** (`agents/rewriter.py::QueryRewriteAgent`) — translate patent jargon → product user-facing vocabulary.
-4. **Search** (`agents/search.py::OfficialDomainSearch`) — `<query> site:<domain>` per (rewritten query, domain) pair.
-5. **Page fetch** (`fetch.py::PageFetcher`, optional `--fetch-pages`) — parallel HTTP fetch + HTML strip → ~4000 chars body to Agent 2.
-6. **Agent 2** (`agents/relevance.py::RelevanceCheckingAgent`) — score each URL 0.0–1.0 against the full claim text + decomposed elements.
+3. **Sub-product probe** (`agents/subproduct.py::SubProductAgent`, default on, disable with `--no-subproduct-probe`) — map the claim onto relevant sub-products / feature surfaces of `{product}`. Generic; no product-specific hardcoding. Output seeds the rewriter and forces per-surface query coverage.
+4. **Rewriter** (`agents/rewriter.py::QueryRewriteAgent`) — receives full claim text + sub-products; translates patent jargon → product user-facing vocabulary, distributes queries across surfaces.
+5. **Search** (`agents/search.py::OfficialDomainSearch`) — `<query> site:<domain>` per (rewritten query, domain) pair.
+6. **Page fetch** (`fetch.py::PageFetcher`, optional `--fetch-pages`) — parallel HTTP fetch + HTML strip → ~4000 chars body to Agent 2.
+7. **Agent 2** (`agents/relevance.py::RelevanceCheckingAgent`) — score each URL 0.0–1.0 against the full claim text + decomposed elements.
 
-`finder.py::ClaimURLFinder.run` orchestrates the six stages and returns a `FinderResult`.
+After scoring, two generic post-processors run before top-k slicing (both default on):
+- **Diversity guard** — within tied-score tiers, cap URLs per path-prefix bucket so one feature area can't drown the top-k.
+- **Element coverage** — append the highest-scoring candidate (above floor) for any claim element with no representative in top-k.
+
+`finder.py::ClaimURLFinder.run` orchestrates all stages and returns a `FinderResult`.
 
 All LLM calls go through `llm.LLMClient` — abstracts OpenAI / Anthropic / Google behind a single `complete(...)` with retry+backoff (jittered exponential). JSON outputs parsed via `utils.parse_json_object` (handles markdown fences, prose-wrapped JSON).
 
@@ -90,6 +95,19 @@ $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --no-cache  # dis
 # so you can inspect exactly which queries fired and which URLs each (query, domain)
 # returned. Useful when a known URL is missing from the final shortlist.
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --trace-dir trace/run1
+
+# Sub-product probe (default ON) — maps claim onto sub-surfaces of an umbrella
+# product (e.g. AWS, Salesforce, Google Maps Platform) and forces the rewriter
+# to cover each. Disable for single-coherent-product runs to skip one LLM call.
+$PY -m claim_url --product "Google Maps Platform" --claim-file claim.txt --no-subproduct-probe
+$PY -m claim_url --product "Google Maps Platform" --claim-file claim.txt --max-subproducts 12
+
+# Top-k post-processors (both default ON) — stop one feature area from drowning
+# the top-k, and guarantee per-element coverage in the output.
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
+  --diversity-per-prefix 1 --diversity-prefix-segments 5
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
+  --no-element-coverage                                 # plain top-k, no append
 
 # Run the test suite
 $PY -m pytest

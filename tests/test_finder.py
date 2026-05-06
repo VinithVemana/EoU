@@ -72,6 +72,7 @@ def test_full_pipeline_with_domain_override(monkeypatch: pytest.MonkeyPatch) -> 
         max_candidates_per_batch=10,
         queries_per_element=1,
         page_fetcher=None,
+        enable_subproduct_probe=False,
     )
     result = finder.run(
         claim="A computer-implemented method for receiving incremental keystrokes...",
@@ -99,6 +100,7 @@ def test_empty_search_short_circuits_relevance(monkeypatch: pytest.MonkeyPatch) 
         llm=llm,
         serp=serp,
         queries_per_element=1,
+        enable_subproduct_probe=False,
     )
     result = finder.run(
         claim="claim text",

@@ -5,12 +5,13 @@ Six files. `finder.py` (one level up) wires the five pipeline stages; `product.p
 ## Files
 
 ```
-domain.py      # Agent 1: DomainIdentificationAgent — discover vendor/official domains (parallel SerpApi probes)
-extractor.py   # ClaimElementExtractor — decompose claim into 4–8 ClaimElement (deterministic, not autonomous)
-rewriter.py    # QueryRewriteAgent — patent-ese → product-ese; --queries-per-element queries per element
-search.py      # OfficialDomainSearch + SearchSummary — site:domain SerpApi calls (parallel) + filter
-relevance.py   # Agent 2: RelevanceCheckingAgent — batch-score each URL 0.0–1.0 (parallel batches)
-product.py     # ProductSuggestionAgent — used by CLI when --product is missing
+domain.py       # Agent 1: DomainIdentificationAgent — discover vendor/official domains (parallel SerpApi probes)
+extractor.py    # ClaimElementExtractor — decompose claim into 4–8 ClaimElement (deterministic, not autonomous)
+subproduct.py   # SubProductAgent — map claim to relevant sub-products / feature surfaces of {product}
+rewriter.py     # QueryRewriteAgent — patent-ese → product-ese; --queries-per-element queries per element
+search.py       # OfficialDomainSearch + SearchSummary — site:domain SerpApi calls (parallel) + filter
+relevance.py    # Agent 2: RelevanceCheckingAgent — batch-score each URL 0.0–1.0 (parallel batches)
+product.py      # ProductSuggestionAgent — used by CLI when --product is missing
 ```
 
 ## Concurrency model
@@ -44,8 +45,17 @@ I/O-bound stages dispatch through bounded `ThreadPoolExecutor`s. Worker counts c
 - Deterministic extractor wrapping a single LLM call; not an autonomous agent.
 - Produces `ClaimElement(id, label, keywords)`. Target 4–8 elements per claim.
 
+### Sub-product probe — `subproduct.py`
+- Optional stage between Extractor and Rewriter. Default ON; disable with `--no-subproduct-probe`.
+- One LLM call: maps the **full claim** onto the sub-products / APIs / SDKs / feature surfaces of `{product}` whose docs are most likely to evidence the claim's limitations.
+- Output is a list of `SubProduct(name, vocabulary, rationale)` consumed by the rewriter to (a) seed product-feature vocabulary and (b) force per-surface query coverage.
+- Generic — no product-specific hardcoding. Works for any umbrella product (Google Maps Platform, AWS, Salesforce, …).
+- Failure (invalid JSON, LLM error) returns an empty list; rewriter degrades gracefully to its default behaviour.
+
 ### Rewriter — `rewriter.py`
 - **Load-bearing for recall**. Without this stage, raw patent vocabulary returns near-zero hits on narrow `site:` searches.
+- Receives the **full claim text** (not just decomposed elements) so it can identify the system-level use-case before emitting queries — element labels alone lose framing context.
+- Receives optional `subproducts` from `SubProductAgent`. When present, the prompt forces the union of generated queries to cover every listed surface.
 - Translates jargon ("incremental keystrokes", "build string", "error model") → user-facing vocabulary ("search suggestions", "autocomplete", "recommendations").
 - Generates `--queries-per-element` queries per element (default 4).
 - Falls back to keyword-only query on LLM failure — never blocks the pipeline.
@@ -63,6 +73,12 @@ I/O-bound stages dispatch through bounded `ThreadPoolExecutor`s. Worker counts c
 - Batches scored in parallel via `ThreadPoolExecutor(max_workers=--score-workers)`.
 - Recall-first prompt: borderline → 0.25, not 0.0.
 - **Dedupe** in `_dedupe`: same URL across batches → higher score wins; tied scores merge `matched_elements` and concatenate rationales.
+
+### Post-process: diversity + element coverage (in `finder.py`)
+After Agent 2 produces the global ranked list, two generic post-processors run before top-k slicing:
+
+- **Diversity guard** (`_apply_diversity`): within each tied-score tier, URLs sharing a path-prefix bucket (first N segments, default 4) are capped at M (default 3); excess URLs defer to the bottom of the tier. Prevents one feature area from drowning others when many URLs tie at score 1.0. URLs with strictly higher scores are never displaced. Configurable: `--diversity-prefix-segments`, `--diversity-per-prefix`.
+- **Element-coverage guarantee** (`_ensure_coverage`): after top-k cut, for each `ClaimElement.id` not represented in top-k, append the highest-scoring candidate (above `--coverage-score-floor`, default 0.5) that matches that element. Output may slightly exceed top-k. Default ON; disable with `--no-element-coverage`.
 
 ## Search budget (per run)
 

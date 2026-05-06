@@ -14,6 +14,7 @@ from claim_url.agents.extractor import ClaimElementExtractor
 from claim_url.agents.relevance import RelevanceCheckingAgent
 from claim_url.agents.rewriter import QueryRewriteAgent
 from claim_url.agents.search import OfficialDomainSearch
+from claim_url.agents.subproduct import SubProductAgent
 from claim_url.fetch import PageFetcher
 from claim_url.llm import LLMClient
 from claim_url.models import DomainCandidate, FinderResult
@@ -42,6 +43,12 @@ class ClaimURLFinder:
         search_workers: int = 8,
         score_workers: int = 4,
         trace_writer: Optional[TraceWriter] = None,
+        enable_subproduct_probe: bool = True,
+        max_subproducts: int = 8,
+        diversity_prefix_segments: int = 4,
+        diversity_per_prefix: int = 3,
+        ensure_element_coverage: bool = True,
+        coverage_score_floor: float = 0.5,
     ) -> None:
         self.domain_agent = DomainIdentificationAgent(
             llm=llm, serp=serp, max_domains=max_domains, max_workers=domain_workers
@@ -63,6 +70,14 @@ class ClaimURLFinder:
         )
         self.page_fetcher = page_fetcher
         self._trace = trace_writer
+        self.subproduct_agent: Optional[SubProductAgent] = (
+            SubProductAgent(llm=llm, max_subproducts=max_subproducts)
+            if enable_subproduct_probe else None
+        )
+        self.diversity_prefix_segments = max(1, int(diversity_prefix_segments))
+        self.diversity_per_prefix = max(1, int(diversity_per_prefix))
+        self.ensure_element_coverage = bool(ensure_element_coverage)
+        self.coverage_score_floor = float(coverage_score_floor)
 
     def run(
         self,
@@ -97,9 +112,25 @@ class ClaimURLFinder:
                 "elements": [asdict(e) for e in elements],
             })
 
+        subproducts = []
+        if self.subproduct_agent is not None:
+            LOG.info("Probing %s for sub-product / feature surfaces relevant to claim", product)
+            subproducts = self.subproduct_agent.discover(
+                product=product, claim=claim, domains=domains
+            )
+            if self._trace is not None:
+                self._trace.write("02b_subproducts.json", {
+                    "count": len(subproducts),
+                    "subproducts": [asdict(sp) for sp in subproducts],
+                })
+
         LOG.info("Rewriting claim elements into product-vocabulary search queries")
         elements = self.query_rewriter.rewrite(
-            product=product, elements=elements, domains=domains
+            product=product,
+            claim=claim,
+            elements=elements,
+            domains=domains,
+            subproducts=subproducts or None,
         )
         rewritten_count = sum(1 for e in elements if e.search_queries)
         LOG.info(
@@ -167,7 +198,15 @@ class ClaimURLFinder:
                 "scored_count": len(scored_all),
                 "all_scored": [asdict(s) for s in scored_all],
             })
-        scored_urls = scored_all[:top_k]
+
+        diversified = self._apply_diversity(scored_all)
+        scored_urls = diversified[:top_k]
+        if self.ensure_element_coverage:
+            scored_urls = self._ensure_coverage(
+                top_k_urls=scored_urls,
+                pool=diversified,
+                element_ids=[e.id for e in elements],
+            )
 
         result = FinderResult(
             product=product, domains=domains, elements=elements, urls=scored_urls
@@ -215,6 +254,107 @@ class ClaimURLFinder:
             with_body,
         )
         return bodies
+
+    def _path_prefix(self, url: str) -> str:
+        """Return the first ``diversity_prefix_segments`` path segments of a URL.
+
+        Used to bucket URLs for the diversity guard. URLs whose path prefixes
+        are identical likely document the same feature area; capping per
+        bucket prevents one feature from drowning others.
+        """
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        segments = [s for s in parsed.path.split("/") if s]
+        prefix = "/".join(segments[: self.diversity_prefix_segments])
+        return f"{parsed.netloc}/{prefix}"
+
+    def _apply_diversity(self, scored: list) -> list:
+        """Within tied-score tiers, cap URLs sharing a path prefix.
+
+        URLs with strictly higher scores are never displaced. Within a single
+        score tier we round-robin across path prefixes, deferring excess
+        URLs from over-represented prefixes to the bottom of the tier.
+        """
+        if not scored or self.diversity_per_prefix <= 0:
+            return list(scored)
+
+        from collections import defaultdict
+
+        # Group consecutive equal-score runs (input is already sorted desc).
+        result: list = []
+        i = 0
+        n = len(scored)
+        while i < n:
+            j = i
+            while j < n and scored[j].score == scored[i].score:
+                j += 1
+            tier = scored[i:j]
+            if len(tier) <= 1:
+                result.extend(tier)
+                i = j
+                continue
+
+            buckets: dict[str, list] = defaultdict(list)
+            order: list[str] = []
+            for item in tier:
+                key = self._path_prefix(item.url)
+                if key not in buckets:
+                    order.append(key)
+                buckets[key].append(item)
+
+            kept: list = []
+            deferred: list = []
+            for key in order:
+                items = buckets[key]
+                kept.extend(items[: self.diversity_per_prefix])
+                deferred.extend(items[self.diversity_per_prefix:])
+            result.extend(kept)
+            result.extend(deferred)
+            i = j
+        return result
+
+    def _ensure_coverage(
+        self,
+        *,
+        top_k_urls: list,
+        pool: list,
+        element_ids: list[str],
+    ) -> list:
+        """Append one URL per uncovered element when a strong candidate exists.
+
+        For each element with no representative in ``top_k_urls`` whose
+        ``matched_elements`` references it, find the highest-scoring URL in
+        ``pool`` (above ``coverage_score_floor``) that does, and append it.
+        Output may exceed ``top_k`` slightly to guarantee per-element coverage.
+        """
+        if not top_k_urls or not element_ids:
+            return top_k_urls
+
+        in_top = {u.url for u in top_k_urls}
+        covered: set[str] = set()
+        for u in top_k_urls:
+            covered.update(u.matched_elements)
+
+        appended: list = list(top_k_urls)
+        for eid in element_ids:
+            if eid in covered:
+                continue
+            for cand in pool:
+                if cand.url in in_top:
+                    continue
+                if cand.score < self.coverage_score_floor:
+                    break  # pool is sorted desc; remaining are weaker
+                if eid in cand.matched_elements:
+                    appended.append(cand)
+                    in_top.add(cand.url)
+                    covered.update(cand.matched_elements)
+                    LOG.info(
+                        "Coverage guard: appended %s (score=%.2f) for element=%s",
+                        cand.url, cand.score, eid,
+                    )
+                    break
+        return appended
 
 
 __all__ = ["ClaimURLFinder"]

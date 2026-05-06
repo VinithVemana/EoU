@@ -3,16 +3,32 @@
 This step is load-bearing for recall. Issuing raw patent terminology to
 narrow ``site:`` queries against vendor docs returns near-zero hits;
 rewriting into product-feature vocabulary closes the gap.
+
+The rewriter is given the **full claim text** in addition to the decomposed
+elements. Element labels are paraphrases — system-level context (the
+overall use-case of the claim) is lost in extraction. Passing the raw
+claim lets the LLM correctly frame which sub-surface of a multi-product
+platform the claim targets before emitting queries.
+
+When sub-products are provided (from
+:class:`~claim_url.agents.subproduct.SubProductAgent`), the rewriter must
+distribute queries so every listed surface receives at least one query
+across the full element set. This fixes the "umbrella product" failure
+where queries cluster on the most popular sub-product and starve the rest.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+from typing import TYPE_CHECKING, Optional
 
 from claim_url.llm import LLMClient
 from claim_url.models import ClaimElement, DomainCandidate
 from claim_url.utils import dedupe_keep_order, parse_json_object
+
+if TYPE_CHECKING:
+    from claim_url.agents.subproduct import SubProduct
 
 
 LOG = logging.getLogger("claim-url-finder")
@@ -29,28 +45,55 @@ Product: {product}
 Official domains being searched (with vendor evidence Agent 1 saw):
 {domains_json}
 
-Claim elements:
+Sub-product / feature surfaces of {product} that are relevant to this claim
+(pre-identified — distribute your queries so each surface listed here is
+targeted by at least one query somewhere across the full element set):
+{subproducts_json}
+
+Full patent claim (canonical context — read the whole claim before emitting
+queries; element labels alone lose system-level framing):
+\"\"\"
+{claim}
+\"\"\"
+
+Claim elements (decomposed limitations):
 {elements_json}
 
-For each claim element, generate {n} distinct Google search queries that would surface the official product documentation page describing that feature on the listed domains.
+Step 1 (internal) — Identify the technical domain / use-case the claim describes
+(authentication, streaming, search ranking, dispatch, replication, payment,
+accessibility, etc.). Use the full claim text — element labels are paraphrases.
 
-Critical translation step:
-Patent claims describe behaviour abstractly. Vendor docs use feature names. Translate patent jargon into the product's actual user-facing vocabulary before emitting the query.
+Step 2 — For each claim element, generate {n} distinct Google search queries
+that would surface the official documentation page describing that limitation
+on the listed domains, using vocabulary appropriate to the use-case from step 1.
 
-Examples of the kind of translation expected:
-- "incremental keystrokes from input device" -> "search suggestions" / "autocomplete" / "type to search"
+Critical translation:
+Patent claims describe behaviour abstractly with generic terms ("first terminal",
+"build string", "incremental keystrokes", "second device"). Vendor docs use
+feature names. Translate generic claim language into the product's actual
+user-facing vocabulary before emitting the query — generic terms as literal
+queries return near-zero hits on narrow site: filters.
+
+Examples of the kind of translation expected (illustrative, not exhaustive):
+- "incremental keystrokes from input device" -> "search suggestions" / "autocomplete"
 - "build a string from keystrokes" -> "search bar" / "remote keyboard"
-- "error model" / "ambiguous keystrokes" -> "search corrections" / "did you mean" / "voice search"
+- "error model" / "ambiguous keystrokes" -> "search corrections" / "did you mean"
 - "catalog of items in memory" -> "library" / "watchlist" / "channel guide"
 - "ordering items on a display" -> "home screen" / "recommendations" / "lineup"
+- "first terminal / second terminal exchanging location data" -> sub-product
+  vocabulary appropriate to the claim's use-case (could be fleet dispatch,
+  ride-sharing, asset tracking, family location-sharing, etc. — the use-case
+  determines the right vocabulary)
 
 Rules:
 - 3-7 tokens per query.
 - Each element's {n} queries must be distinct: different synonyms, angles, or anchors.
+- If a sub-product list is given above, the union of all queries must cover
+  every listed sub-product (each surface gets at least one query).
 - Do NOT include site: operators. Domain restriction is added by the caller.
 - Do NOT wrap the product name in quotes.
-- Anchor with the product or its short name when it improves precision; omit when the feature name alone is more natural.
-- If the element is generic boilerplate, pick the closest concrete product feature.
+- Anchor with the product or sub-product name when it improves precision.
+- If the element is generic boilerplate, pick the closest concrete feature.
 - Return JSON only.
 
 Schema:
@@ -76,8 +119,10 @@ class QueryRewriteAgent:
         self,
         *,
         product: str,
+        claim: str,
         elements: list[ClaimElement],
         domains: list[DomainCandidate],
+        subproducts: Optional[list["SubProduct"]] = None,
     ) -> list[ClaimElement]:
         """Mutates ``elements`` in place with rewritten queries; returns the same list.
 
@@ -94,10 +139,17 @@ class QueryRewriteAgent:
         elements_payload = [
             {"id": e.id, "label": e.label, "keywords": e.keywords} for e in elements
         ]
+        subproducts_payload = [
+            {"name": sp.name, "vocabulary": sp.vocabulary, "rationale": sp.rationale}
+            for sp in (subproducts or [])
+        ]
 
         prompt = PROMPT_TEMPLATE.format(
             product=product,
+            claim=claim.strip(),
             domains_json=json.dumps(domains_payload, indent=2),
+            subproducts_json=json.dumps(subproducts_payload, indent=2)
+                if subproducts_payload else "[]  (none provided)",
             elements_json=json.dumps(elements_payload, indent=2),
             n=self.queries_per_element,
         )

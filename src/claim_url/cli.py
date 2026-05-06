@@ -29,8 +29,17 @@ Usage examples (always invoked via the venv pinned in the global
         --cache-dir .claim_url_cache                              # custom cache dir
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
         --no-cache                                                # disable cache
+    python -m claim_url --product "Google Maps Platform" --claim-file claim_v2.txt  --trace-dir trace/run1
+    python -m claim_url --product "Google Maps Platform" --claim-file claim_v2.txt \\
+        --no-subproduct-probe                                     # skip sub-product probe
+    python -m claim_url --product "Google Maps Platform" --claim-file claim_v2.txt \\
+        --max-subproducts 12 --queries-per-element 6              # broader umbrella coverage
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
-        --trace-dir trace/run1                                    # dump per-stage JSON artifacts
+        --diversity-per-prefix 1 --diversity-prefix-segments 5    # strict path diversity
+    python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
+        --no-element-coverage                                     # plain top-k (no coverage append)
+    python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
+        --coverage-score-floor 0.3                                # accept weaker covering hits
 """
 
 from __future__ import annotations
@@ -222,9 +231,55 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--trace-dir", default=None,
         help=(
             "Optional directory to dump per-stage JSON artifacts: "
-            "01_domains, 02_elements, 03_queries, 04_search, 05_pagefetch, "
-            "06_scoring, 07_final. Useful for forensics on why a URL was "
-            "missed. Disabled by default."
+            "01_domains, 02_elements, 02b_subproducts, 03_queries, 04_search, "
+            "05_pagefetch, 06_scoring, 07_final. Useful for forensics on why "
+            "a URL was missed. Disabled by default."
+        ),
+    )
+
+    parser.add_argument(
+        "--subproduct-probe", action=argparse.BooleanOptionalAction, default=True,
+        help=(
+            "Run a sub-product / feature-surface probe before query rewriting. "
+            "Maps the claim's use-case onto specific sub-surfaces of the product "
+            "(e.g. for a multi-API platform, picks the relevant APIs) and forces "
+            "the rewriter to cover each. Default: on. Disable with "
+            "--no-subproduct-probe."
+        ),
+    )
+    parser.add_argument(
+        "--max-subproducts", type=int, default=8,
+        help="Cap on sub-product surfaces returned by the probe. Default: 8.",
+    )
+    parser.add_argument(
+        "--diversity-prefix-segments", type=int, default=4,
+        help=(
+            "URL path segments used to bucket results for the tied-score "
+            "diversity guard. Higher = stricter dedupe. Default: 4."
+        ),
+    )
+    parser.add_argument(
+        "--diversity-per-prefix", type=int, default=3,
+        help=(
+            "Max URLs per path-prefix bucket within a single tied-score tier. "
+            "Excess URLs are pushed to the bottom of the tier so other prefixes "
+            "get a chance in top-k. Default: 3."
+        ),
+    )
+    parser.add_argument(
+        "--element-coverage", action=argparse.BooleanOptionalAction, default=True,
+        help=(
+            "After top-k selection, append one URL per claim element that has "
+            "no representative in top-k (when a candidate scores >= "
+            "--coverage-score-floor). Output may slightly exceed top-k. "
+            "Default: on. Disable with --no-element-coverage."
+        ),
+    )
+    parser.add_argument(
+        "--coverage-score-floor", type=float, default=0.5,
+        help=(
+            "Minimum score a candidate URL must reach to qualify for the "
+            "element-coverage guarantee. Default: 0.5."
         ),
     )
 
@@ -523,6 +578,12 @@ def main(argv: Optional[list[str]] = None) -> int:
             search_workers=args.search_workers,
             score_workers=args.score_workers,
             trace_writer=trace_writer,
+            enable_subproduct_probe=args.subproduct_probe,
+            max_subproducts=args.max_subproducts,
+            diversity_prefix_segments=args.diversity_prefix_segments,
+            diversity_per_prefix=args.diversity_per_prefix,
+            ensure_element_coverage=args.element_coverage,
+            coverage_score_floor=args.coverage_score_floor,
         )
 
         try:
