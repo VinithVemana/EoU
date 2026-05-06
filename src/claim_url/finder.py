@@ -131,7 +131,7 @@ class ClaimURLFinder:
         if self.subproduct_agent is not None:
             LOG.info("Probing %s for sub-product / feature surfaces relevant to claim", product)
             subproducts = self.subproduct_agent.discover(
-                product=product, claim=claim, domains=domains
+                product=product, claim=claim, domains=domains, spec_context=spec_text
             )
             if self._trace is not None:
                 self._trace.write("02b_subproducts.json", {
