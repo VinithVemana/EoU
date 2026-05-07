@@ -37,12 +37,42 @@ class ClaimElement:
         return [self.keyword_query(product, max_keywords=max_keywords)]
 
 
+@dataclass(slots=True, frozen=True)
+class DomainSpec:
+    """Host plus optional path prefix used to scope ``site:`` searches.
+
+    For multi-tenant hosts (github.com, gitlab.com, medium.com, …) ``site:``
+    matches every tenant unless a path is appended. ``path_prefix`` carries
+    the vendor-owned slice — e.g. ``DomainSpec("github.com", "/Netflix")``
+    issues ``site:github.com/Netflix`` and rejects URLs whose path does not
+    start with ``/Netflix``.
+    """
+
+    host: str
+    path_prefix: str = ""
+
+    def site_query(self) -> str:
+        if self.path_prefix:
+            return f"{self.host}{self.path_prefix}"
+        return self.host
+
+    def display(self) -> str:
+        return self.site_query()
+
+
 @dataclass(slots=True)
 class DomainCandidate:
     domain: str
     confidence: float
     rationale: str = ""
     source_urls: list[str] = field(default_factory=list)
+    path_prefix: str = ""
+
+    def spec(self) -> "DomainSpec":
+        return DomainSpec(host=self.domain, path_prefix=self.path_prefix)
+
+    def display(self) -> str:
+        return f"{self.domain}{self.path_prefix}" if self.path_prefix else self.domain
 
 
 @dataclass(slots=True)
@@ -88,6 +118,7 @@ class FinderResult:
 __all__ = [
     "ClaimElement",
     "DomainCandidate",
+    "DomainSpec",
     "FinderResult",
     "RawHit",
     "ScoredURL",

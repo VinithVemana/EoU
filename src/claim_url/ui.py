@@ -14,6 +14,7 @@ from typing import Any, Optional
 import gradio as gr
 
 from claim_url import __version__
+from claim_url.agents.domain import DomainIdentificationAgent
 from claim_url.agents.product import ProductSuggestionAgent
 from claim_url.cache import DiskCache
 from claim_url.cli import _parse_domain_override, _parse_url_pattern_list
@@ -43,6 +44,58 @@ LOG = logging.getLogger("claim-url-finder")
 
 DEFAULT_EXCLUDE_PATTERNS = r"/browse/,/watch\?,/community-guide/"
 DEFAULT_CLAIM_PATH = Path("claim.txt")
+
+
+# --------------------------------------------------------------------------- #
+# Research mode presets — applied to the visible controls when the mode radio
+# changes. Users can still tweak any value after a preset is applied.
+# --------------------------------------------------------------------------- #
+RESEARCH_MODE_NORMAL = "Research"
+RESEARCH_MODE_DEEP = "Deep Research"
+
+# Order matches the change handler's `outputs` list in build_app().
+RESEARCH_PRESETS: dict[str, dict[str, Any]] = {
+    RESEARCH_MODE_NORMAL: {
+        "top_k": 10,
+        "queries_per_element": 4,
+        "per_domain": 10,
+        "max_subproducts": 8,
+        "subproduct_two_step": False,
+        "use_case_classification": True,
+        "path_expansion": False,
+        "path_expansion_max_followups": 12,
+        "path_expansion_min_hits": 2,
+        "index_link_harvest": True,
+        "index_link_harvest_max_total": 200,
+        "fetch_max_chars": 4000,
+        "coverage_score_floor": 0.5,
+        "coverage_score_floor_secondary": 0.25,
+    },
+    RESEARCH_MODE_DEEP: {
+        # Wider top-k so element-coverage append doesn't push hits off the list.
+        "top_k": 25,
+        # 6 queries per element × 7 elements = 42 queries (vs 28 baseline).
+        "queries_per_element": 6,
+        # SerpApi pulls 15 results per (query, domain) instead of 10.
+        "per_domain": 15,
+        # 12 sub-product surfaces vs 8 — wider rewriter coverage.
+        "max_subproducts": 12,
+        # Two-step subproduct harvest: enumerate then filter (extra LLM call).
+        "subproduct_two_step": True,
+        "use_case_classification": True,
+        # Path-neighborhood expansion ON with bigger budget + lower threshold.
+        "path_expansion": True,
+        "path_expansion_max_followups": 24,
+        "path_expansion_min_hits": 1,
+        # Index-page link harvest 2x the cap.
+        "index_link_harvest": True,
+        "index_link_harvest_max_total": 400,
+        # Bigger fetch window so scorer sees more body text per page.
+        "fetch_max_chars": 6000,
+        "coverage_score_floor": 0.5,
+        "coverage_score_floor_secondary": 0.25,
+    },
+}
 
 
 CSS = """
@@ -155,6 +208,29 @@ def _cache_root(cache_dir: Any, use_cache: bool) -> Optional[Path]:
     value = _text(cache_dir).strip() or ".claim_url_cache"
     return Path(value).expanduser()
 
+
+def _auto_trace_dir(base: str = "trace") -> Path:
+    """Return ``<base>/run<N+1>`` where N is the highest existing ``runN``.
+
+    Scans ``<base>/`` for sub-directories named ``run<int>`` and returns the
+    next slot. ``trace/run1`` when no existing matches (or no base dir).
+    """
+    base_path = Path(base).expanduser()
+    next_index = 1
+    if base_path.is_dir():
+        max_seen = 0
+        for child in base_path.iterdir():
+            if not child.is_dir():
+                continue
+            name = child.name
+            if not name.startswith("run"):
+                continue
+            suffix = name[3:]
+            if suffix.isdigit():
+                max_seen = max(max_seen, int(suffix))
+        next_index = max_seen + 1
+    return base_path / f"run{next_index}"
+
 def _read_claim(claim_text: str, claim_file: Optional[str]) -> str:
     """
     Read claim text.
@@ -257,6 +333,7 @@ def _build_summary(
     elapsed: float,
     serp_cache: DiskCache,
     fetch_cache: Optional[DiskCache],
+    spec_context: Optional[SpecContext] = None,
 ) -> str:
     usage = llm.usage
 
@@ -270,12 +347,20 @@ def _build_summary(
             f"{fetch_cache.misses} misses, {fetch_cache.writes} writes"
         )
 
+    spec_line = "Spec context: `not used`  \n"
+    if spec_context:
+        spec_line = (
+            f"Spec context: `{len(spec_context.relevant_paragraphs)}` "
+            f"description paragraphs via `{spec_context.selection_method}` selection  \n"
+        )
+
     return (
         f"**Completed in {elapsed:.1f}s**\n\n"
         f"Product: `{result.product}`  \n"
         f"Domains: `{len(result.domains)}`  \n"
         f"Claim elements: `{len(result.elements)}`  \n"
-        f"Ranked URLs: `{len(result.urls)}`\n\n"
+        f"Ranked URLs: `{len(result.urls)}`  \n"
+        f"{spec_line}\n"
         f"Provider: `{llm.provider.value}`  \n"
         f"Model: `{llm.model}`  \n"
         f"LLM calls: `{usage.calls}`  \n"
@@ -348,7 +433,7 @@ def _url_rows(result: FinderResult) -> list[list[Any]]:
 def _domain_rows(result: FinderResult) -> list[list[Any]]:
     return [
         [
-            domain.domain,
+            domain.display(),
             f"{domain.confidence:.2f}",
             domain.rationale,
             "\n".join(domain.source_urls[:5]),
@@ -500,6 +585,99 @@ def suggest_products(
     )
 
 
+def discover_domains_for_review(
+    product: str,
+    provider: str,
+    model: str,
+    llm_api_key: str,
+    serpapi_key: str,
+    cache_dir: str,
+    use_cache: bool,
+    max_domains: int,
+    domain_workers: int,
+) -> tuple[Any, Any, Any]:
+    """Run only Stage 1 and render a checklist for the user to review.
+
+    Returns (checklist_update, status_update, state_update). The state stores
+    the full ``DomainCandidate`` dicts keyed by spec so we can pass rationale
+    + path_prefix back to the pipeline rather than only the host string.
+    """
+    if not product or not product.strip():
+        return (
+            gr.update(choices=[], value=[], visible=False),
+            gr.update(value="Enter a product before discovering domains.", visible=True),
+            {},
+        )
+
+    try:
+        cache_root = _cache_root(cache_dir, use_cache)
+        llm = _build_llm(
+            provider=provider,
+            model=model,
+            llm_api_key=llm_api_key,
+            cache_root=cache_root,
+            cache_enabled=use_cache,
+        )
+        serp = SerpApiClient(
+            api_key=_optional_stripped(serpapi_key),
+            cache=DiskCache(cache_root, "serp", enabled=use_cache),
+        )
+        agent = DomainIdentificationAgent(
+            llm=llm,
+            serp=serp,
+            max_domains=int(max_domains),
+            max_workers=int(domain_workers),
+        )
+        domains = agent.discover(product.strip())
+    except Exception as exc:
+        LOG.exception("Domain discovery failed: %s", exc)
+        return (
+            gr.update(choices=[], value=[], visible=False),
+            gr.update(value=f"Domain discovery failed: {exc}", visible=True),
+            {},
+        )
+
+    if not domains:
+        return (
+            gr.update(choices=[], value=[], visible=False),
+            gr.update(
+                value="No domains discovered. Run Search will retry without review.",
+                visible=True,
+            ),
+            {},
+        )
+
+    # CheckboxGroup choice values must be JSON-serialisable primitives —
+    # use the display string and key the state dict by that same string so
+    # selected values round-trip cleanly through the Gradio network layer.
+    choices = [
+        (f"{d.display()}  —  conf {d.confidence:.2f}", d.display())
+        for d in domains
+    ]
+    values = [d.display() for d in domains]
+    state = {d.display(): asdict(d) for d in domains}
+
+    status = (
+        f"Found {len(domains)} domain"
+        f"{'s' if len(domains) != 1 else ''}. "
+        "Uncheck any you want to skip, then click Run Search."
+    )
+    return (
+        gr.update(choices=choices, value=values, visible=True),
+        gr.update(value=status, visible=True),
+        state,
+    )
+
+
+def _clear_domain_review() -> tuple[Any, Any, Any]:
+    """Reset the review checklist + state when the product textbox changes."""
+    return (
+        gr.update(choices=[], value=[], visible=False),
+        gr.update(value="", visible=False),
+        {},
+    )
+
+
 def select_product_suggestion(rows: Any, evt: gr.SelectData) -> Any:
     """Copy clicked product suggestion into the editable product textbox."""
     if rows is None:
@@ -548,12 +726,26 @@ def run_pipeline(
     cache_dir: str,
     use_cache: bool,
     trace_dir: str,
+    save_trace: bool,
     subproduct_probe: bool,
     max_subproducts: int,
+    subproduct_two_step: bool,
+    use_case_classification: bool,
+    path_expansion: bool,
+    path_expansion_max_followups: int,
+    path_expansion_min_hits: int,
+    path_expansion_prefix_segments: int,
+    index_link_harvest: bool,
+    index_link_harvest_max_total: int,
     diversity_prefix_segments: int,
     diversity_per_prefix: int,
     element_coverage: bool,
     coverage_score_floor: float,
+    coverage_score_floor_secondary: float,
+    playwright_fetch: bool,
+    fetch_adaptive_playwright: bool,
+    selected_domain_specs: Optional[list[str]],
+    domain_review_state: Optional[dict[str, Any]],
 ) -> Iterator[tuple[str, list[Any], list[Any], list[Any], str, dict[str, Any], str]]:
     started = time.time()
     page_fetcher: Optional[PageFetcher] = None
@@ -610,12 +802,50 @@ def run_pipeline(
         score_workers = int(score_workers)
         max_spec_paragraphs = int(max_spec_paragraphs)
         max_subproducts = int(max_subproducts)
+        path_expansion_max_followups = int(path_expansion_max_followups)
+        path_expansion_min_hits = int(path_expansion_min_hits)
+        index_link_harvest_max_total = int(index_link_harvest_max_total)
         diversity_prefix_segments = int(diversity_prefix_segments)
         diversity_per_prefix = int(diversity_per_prefix)
         coverage_score_floor = float(coverage_score_floor)
+        coverage_score_floor_secondary = float(coverage_score_floor_secondary)
 
         domain_override = _parse_domain_override(_text(domains))
         exclude_patterns: list[re.Pattern[str]] = _parse_url_pattern_list(_text(exclude_url_patterns))
+
+        # If the user previewed and curated domains via the review checklist,
+        # build full DomainCandidate objects from the cached state so we keep
+        # rationale/confidence/path_prefix in the result. Empty selection
+        # after discovery is treated as a user error (re-run discovery or
+        # leave the field alone to fall through to live Stage 1).
+        from claim_url.models import DomainCandidate as _DC
+        preselected: Optional[list[_DC]] = None
+        state = domain_review_state or {}
+        selected = list(selected_domain_specs or [])
+        if state:
+            if not selected:
+                raise ClaimURLError(
+                    "You unchecked all reviewed domains. Re-run 'Discover Domains' "
+                    "or check at least one before running the search."
+                )
+            preselected = []
+            for spec in selected:
+                cand_dict = state.get(spec)
+                if not cand_dict:
+                    continue
+                preselected.append(_DC(
+                    domain=cand_dict.get("domain", ""),
+                    confidence=float(cand_dict.get("confidence", 1.0)),
+                    rationale=cand_dict.get("rationale", "Selected via domain review"),
+                    source_urls=list(cand_dict.get("source_urls") or []),
+                    path_prefix=cand_dict.get("path_prefix"),
+                ))
+            if not preselected:
+                raise ClaimURLError(
+                    "Domain review state lost — re-run 'Discover Domains'."
+                )
+            # When preselected is set, the textbox override is redundant.
+            domain_override = None
 
         cache_root = _cache_root(cache_dir, use_cache)
         llm_cache = DiskCache(cache_root, "llm", enabled=use_cache)
@@ -640,12 +870,18 @@ def run_pipeline(
         )
         
 
-        if fetch_pages:
+        if fetch_pages or playwright_fetch:
+            import os
+            from claim_url.config import ENV_FIRECRAWL_KEY
+            firecrawl_key = os.environ.get(ENV_FIRECRAWL_KEY, "").strip() or None
             page_fetcher = PageFetcher(
                 max_chars=fetch_max_chars,
                 timeout=fetch_timeout,
                 max_workers=fetch_workers,
                 disk_cache=fetch_cache,
+                use_playwright=bool(playwright_fetch),
+                adaptive_playwright_fallback=bool(fetch_adaptive_playwright),
+                firecrawl_api_key=firecrawl_key,
             )
 
         spec_context: Optional[SpecContext] = None
@@ -676,9 +912,14 @@ def run_pipeline(
             )
 
         trace_writer: Optional[TraceWriter] = None
-        trace_value = _text(trace_dir).strip()
-        if trace_value:
-            trace_writer = TraceWriter(Path(trace_value).expanduser())
+        if save_trace:
+            trace_value = _text(trace_dir).strip()
+            if trace_value:
+                trace_path = Path(trace_value).expanduser()
+            else:
+                trace_path = _auto_trace_dir()
+            trace_writer = TraceWriter(trace_path)
+            LOG.info("Trace dir: %s", trace_path)
 
         finder = ClaimURLFinder(
             llm=llm,
@@ -695,10 +936,19 @@ def run_pipeline(
             trace_writer=trace_writer,
             enable_subproduct_probe=bool(subproduct_probe),
             max_subproducts=max_subproducts,
+            subproduct_two_step_harvest=bool(subproduct_two_step),
+            enable_use_case_classification=bool(use_case_classification),
+            enable_path_expansion=bool(path_expansion),
+            path_expansion_max_followups=path_expansion_max_followups,
+            path_expansion_min_hits=path_expansion_min_hits,
+            path_expansion_prefix_segments=path_expansion_prefix_segments,
+            enable_index_link_harvest=bool(index_link_harvest),
+            index_harvest_max_total_links=index_link_harvest_max_total,
             diversity_prefix_segments=diversity_prefix_segments,
             diversity_per_prefix=diversity_per_prefix,
             ensure_element_coverage=bool(element_coverage),
             coverage_score_floor=coverage_score_floor,
+            coverage_score_floor_secondary=coverage_score_floor_secondary,
         )
 
         yield _empty_outputs(
@@ -714,6 +964,7 @@ def run_pipeline(
             product=product,
             top_k=top_k,
             domain_override=domain_override,
+            preselected_domains=preselected,
             spec_context=spec_context,
         )
 
@@ -733,6 +984,7 @@ def run_pipeline(
             elapsed=elapsed,
             serp_cache=serp_cache,
             fetch_cache=fetch_cache if fetch_pages else None,
+            spec_context=spec_context,
         )
 
         cost_panel = _build_cost_panel(
@@ -768,8 +1020,6 @@ def run_pipeline(
 def build_app() -> gr.Blocks:
     with gr.Blocks(
         title="Claim URL Finder",
-        theme=THEME,
-        css=CSS,
     ) as app:
         gr.Markdown(
             f"# Claim URL Finder\nPatent claim evidence discovery · v{__version__}",
@@ -876,16 +1126,76 @@ def build_app() -> gr.Blocks:
                     step=1,
                 )
 
+                subproduct_two_step = gr.Checkbox(
+                    label="Subproduct Two-Step Harvest (extra LLM call)",
+                    value=False,
+                )
+
+                use_case_classification = gr.Checkbox(
+                    label="Use-Case Classifier (extra LLM call)",
+                    value=True,
+                )
+
+                path_expansion = gr.Checkbox(
+                    label="Path-Neighborhood Expansion (extra SerpApi calls)",
+                    value=False,
+                )
+
+                path_expansion_max_followups = gr.Slider(
+                    label="Path-Expansion Max Follow-ups",
+                    minimum=0,
+                    maximum=48,
+                    value=12,
+                    step=2,
+                )
+
+                path_expansion_min_hits = gr.Slider(
+                    label="Path-Expansion Min Hits / Prefix",
+                    minimum=1,
+                    maximum=10,
+                    value=2,
+                    step=1,
+                )
+
+                path_expansion_prefix_segments = gr.Slider(
+                    label="Path-Expansion Prefix Segments",
+                    minimum=1,
+                    maximum=8,
+                    value=3,
+                    step=1,
+                )
+
+                index_link_harvest = gr.Checkbox(
+                    label="Index-Page Link Harvest (no extra SerpApi cost)",
+                    value=True,
+                )
+
+                index_link_harvest_max_total = gr.Slider(
+                    label="Index-Harvest Max Total Links",
+                    minimum=0,
+                    maximum=800,
+                    value=200,
+                    step=50,
+                )
+
                 element_coverage = gr.Checkbox(
                     label="Element Coverage",
                     value=True,
                 )
 
                 coverage_score_floor = gr.Slider(
-                    label="Coverage Score Floor",
+                    label="Coverage Score Floor (primary)",
                     minimum=0.0,
                     maximum=1.0,
                     value=0.5,
+                    step=0.05,
+                )
+
+                coverage_score_floor_secondary = gr.Slider(
+                    label="Coverage Score Floor (secondary fallback)",
+                    minimum=0.0,
+                    maximum=1.0,
+                    value=0.25,
                     step=0.05,
                 )
 
@@ -905,14 +1215,30 @@ def build_app() -> gr.Blocks:
                     step=1,
                 )
 
+                save_trace = gr.Checkbox(
+                    label="Save Trace (per-stage JSON artifacts)",
+                    value=False,
+                )
+
                 trace_dir = gr.Textbox(
                     label="Trace Directory",
-                    placeholder="trace/run1",
+                    placeholder="trace/run<N+1>  (leave empty to auto-pick next slot)",
+                    info="Leave empty when 'Save Trace' is on to auto-pick trace/runN+1.",
                 )
 
             with gr.Accordion("Runtime", open=False):
                 fetch_pages = gr.Checkbox(
                     label="Fetch Page Bodies",
+                    value=True,
+                )
+
+                playwright_fetch = gr.Checkbox(
+                    label="Playwright Fetch (Chromium, JS render + bot bypass)",
+                    value=False,
+                )
+
+                fetch_adaptive_playwright = gr.Checkbox(
+                    label="Adaptive Playwright Fallback (auto-promote bot-blocked hosts)",
                     value=True,
                 )
 
@@ -1009,6 +1335,21 @@ def build_app() -> gr.Blocks:
                 )
 
         with gr.Column(elem_id="workspace"):
+            # Research mode preset — applies a bundle of slider/checkbox values
+            # when toggled. User can still tweak any value afterwards.
+            with gr.Row(equal_height=True):
+                research_mode = gr.Radio(
+                    label="Search Mode",
+                    choices=[RESEARCH_MODE_NORMAL, RESEARCH_MODE_DEEP],
+                    value=RESEARCH_MODE_NORMAL,
+                    info=(
+                        f"{RESEARCH_MODE_NORMAL}: lean default (fewer LLM/SerpApi "
+                        f"calls, faster, ~$). {RESEARCH_MODE_DEEP}: maximises recall — "
+                        "more queries, two-step subproduct, path expansion, larger "
+                        "top-k, deeper index harvest. Costs ~2-3× normal."
+                    ),
+                )
+
             # Patent number lookup — populates the claim textbox automatically.
             with gr.Row(equal_height=True):
                 with gr.Column(scale=5):
@@ -1072,12 +1413,30 @@ def build_app() -> gr.Blocks:
                             variant="secondary",
                         )
 
+                        discover_button = gr.Button(
+                            "Discover Domains",
+                            variant="secondary",
+                        )
+
                         run_button = gr.Button(
                             "Run Search",
                             variant="primary",
                         )
 
             suggestion_status = gr.Markdown(visible=False)
+
+            # Domain review checklist — populated by Discover Domains. When
+            # any items are selected here, Run Search uses them and skips
+            # the pipeline's Stage 1 (saves SerpApi probes + an LLM call).
+            domain_review_state = gr.State({})
+            domain_review = gr.CheckboxGroup(
+                label="Discovered Domains (uncheck to skip)",
+                choices=[],
+                value=[],
+                visible=False,
+                interactive=True,
+            )
+            domain_review_status = gr.Markdown(visible=False)
 
             # Product suggestions are not shown by default.
             # They become visible after clicking "Suggest Products".
@@ -1167,6 +1526,50 @@ def build_app() -> gr.Blocks:
             outputs=model,
         )
 
+        # Research mode preset — when the radio toggles, push the preset values
+        # into the relevant controls so the user sees what changed and can
+        # still tweak anything before pressing Run.
+        def _apply_research_preset(mode: str) -> tuple[Any, ...]:
+            preset = RESEARCH_PRESETS.get(mode, RESEARCH_PRESETS[RESEARCH_MODE_NORMAL])
+            return (
+                gr.update(value=preset["top_k"]),
+                gr.update(value=preset["queries_per_element"]),
+                gr.update(value=preset["per_domain"]),
+                gr.update(value=preset["max_subproducts"]),
+                gr.update(value=preset["subproduct_two_step"]),
+                gr.update(value=preset["use_case_classification"]),
+                gr.update(value=preset["path_expansion"]),
+                gr.update(value=preset["path_expansion_max_followups"]),
+                gr.update(value=preset["path_expansion_min_hits"]),
+                gr.update(value=preset["index_link_harvest"]),
+                gr.update(value=preset["index_link_harvest_max_total"]),
+                gr.update(value=preset["fetch_max_chars"]),
+                gr.update(value=preset["coverage_score_floor"]),
+                gr.update(value=preset["coverage_score_floor_secondary"]),
+            )
+
+        research_mode.change(
+            fn=_apply_research_preset,
+            inputs=research_mode,
+            outputs=[
+                top_k,
+                queries_per_element,
+                per_domain,
+                max_subproducts,
+                subproduct_two_step,
+                use_case_classification,
+                path_expansion,
+                path_expansion_max_followups,
+                path_expansion_min_hits,
+                index_link_harvest,
+                index_link_harvest_max_total,
+                fetch_max_chars,
+                coverage_score_floor,
+                coverage_score_floor_secondary,
+            ],
+            show_progress="hidden",
+        )
+
         claim_file.change(
             fn=load_claim_file_to_text,
             inputs=claim_file,
@@ -1206,6 +1609,32 @@ def build_app() -> gr.Blocks:
             show_progress="hidden",
         )
 
+        discover_button.click(
+            fn=discover_domains_for_review,
+            inputs=[
+                product,
+                provider,
+                model,
+                llm_api_key,
+                serpapi_key,
+                cache_dir,
+                use_cache,
+                max_domains,
+                domain_workers,
+            ],
+            outputs=[domain_review, domain_review_status, domain_review_state],
+            show_progress="minimal",
+        )
+
+        # Clear stale review checklist when the product changes — domains
+        # discovered for the previous product are no longer valid.
+        product.change(
+            fn=_clear_domain_review,
+            inputs=None,
+            outputs=[domain_review, domain_review_status, domain_review_state],
+            show_progress="hidden",
+        )
+
         run_button.click(
             fn=run_pipeline,
             inputs=[
@@ -1241,12 +1670,26 @@ def build_app() -> gr.Blocks:
                 cache_dir,
                 use_cache,
                 trace_dir,
+                save_trace,
                 subproduct_probe,
                 max_subproducts,
+                subproduct_two_step,
+                use_case_classification,
+                path_expansion,
+                path_expansion_max_followups,
+                path_expansion_min_hits,
+                path_expansion_prefix_segments,
+                index_link_harvest,
+                index_link_harvest_max_total,
                 diversity_prefix_segments,
                 diversity_per_prefix,
                 element_coverage,
                 coverage_score_floor,
+                coverage_score_floor_secondary,
+                playwright_fetch,
+                fetch_adaptive_playwright,
+                domain_review,
+                domain_review_state,
             ],
             outputs=[
                 status,
@@ -1319,6 +1762,8 @@ def main(argv: Optional[list[str]] = None) -> None:
         server_name=args.host,
         server_port=args.port,
         share=args.share,
+        theme=THEME,
+        css=CSS,
     )
 
 

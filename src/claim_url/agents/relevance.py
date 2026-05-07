@@ -52,31 +52,46 @@ Candidate official URLs:
 
 For each candidate URL:
 1. Decide which claim element ids the URL evidences. Match against both the decomposed elements AND the full claim. A page that describes the *same product feature* using different terminology than the claim is still a match (e.g. "recommendations" / "search suggestions" / "autocomplete" all map to elements about predicting and presenting likely items even if the claim says "incremental keystrokes" or "error model").
-2. Assign a relevance score from 0.0 to 1.0.
+2. Assign a continuous relevance score in [0.00, 1.00] with TWO decimal places of precision.
 
-Scoring:
-- 1.0: Body or snippet directly describes product behaviour matching one or more claim limitations.
-- 0.75: Strong evidence — describes the same feature using different vocabulary.
-- 0.5: Adjacent/supporting evidence about a related product feature.
-- 0.25: Weak contextual relevance — page mentions the feature area but does not describe the limitation directly.
-- 0.0: Unrelated to the claim entirely.
+Scoring (continuous — DO NOT round to 0.25 increments):
+The score is a continuous probability that this URL is useful evidence for at least one claim limitation. Use the full [0.00, 1.00] range. Anchors are reference points only; pick the exact intermediate value that reflects the strength of the match. Two URLs that are both "strong evidence" should rarely tie — small differences in coverage, specificity, and vocabulary alignment must produce small differences in score (e.g. 0.83 vs 0.78).
+
+Reference anchors (interpolate freely between them):
+- ~1.00: Body explicitly describes the exact behaviour of one or more limitations using product vocabulary, with specifics (UI flow, parameters, examples).
+- ~0.85: Body describes the limitation accurately but slightly less explicitly (covers the mechanism without all specifics).
+- ~0.70: Body covers the same product feature in different vocabulary; mechanism is recognizable.
+- ~0.55: Adjacent feature page — describes a related capability that overlaps the claim's surface but isn't the precise limitation.
+- ~0.40: Feature-area page (overview / index / category) that contains pointers to relevant pages but does not itself describe the limitation.
+- ~0.25: Weak contextual relevance — mentions the feature area in passing.
+- ~0.10: Tangential — same product, unrelated function.
+- 0.00: Unrelated to the claim entirely, OR legal/policy/pricing/ToS page.
+
+Score-shaping factors (combine these to land between anchors):
+- + Specificity: concrete UI/API description vs. vague marketing copy.
+- + Vocabulary alignment: page uses the claim's mechanisms (even via synonyms).
+- + Coverage breadth: more matched elements → higher score.
+- + Canonical surface: official help/answer/docs page > blog post > forum thread > marketing landing.
+- − Off-domain feature: same product but different surface than the claim's mechanism.
+- − Snippet-only signal: when body fetch was empty, prefer slightly lower scores (uncertainty).
 
 Rules:
 - When body text is present, weight it more heavily than the snippet — snippets are often generic SEO blurbs that understate relevance.
 - Be associative, not literal. The claim uses patent jargon ("incremental keystrokes", "error model", "build string", "alphanumeric symbols"); product docs use feature names ("search", "autocomplete", "recommendations", "voice search", "library", "guide", "lineup"). These are the same thing.
 - Use the patent description context (if provided) to identify the technical domain of the claim and prefer pages that fit that domain over pages that merely share surface-level vocabulary.
-- Legal documents, terms of service, policies, and pricing pages are NOT documentation. Score them 0.0.
-- Only assign 0.0 if the page is genuinely off-topic. Borderline pages in the right domain should score 0.25, not 0.0.
-- Drop URLs that score 0.0 against every element.
+- Legal documents, terms of service, policies, and pricing pages are NOT documentation. Score them 0.00.
+- Only assign 0.00 if the page is genuinely off-topic. Borderline pages in the right domain should score around 0.20–0.35, not 0.00.
+- Drop URLs that score 0.00 against every element.
 - Prefer canonical documentation/help/answer pages over generic landing or per-content pages.
+- Continuous scoring is mandatory. Do not snap to 0.00 / 0.25 / 0.50 / 0.75 / 1.00. Examples of valid scores: 0.07, 0.23, 0.41, 0.58, 0.66, 0.79, 0.88, 0.94. Repeating identical scores across many URLs is a sign of bucketing — refine until each URL's score reflects its individual strength.
 - Return JSON only.
 
-Schema:
+Schema (note the continuous score example — emit values like 0.83, 0.41, 0.07, NOT 0.75 / 0.50 / 0.25):
 {{
   "ranked": [
     {{
       "url": "https://...",
-      "score": 0.0,
+      "score": 0.83,
       "matched_elements": ["E1", "E2"],
       "rationale": "short reason"
     }}

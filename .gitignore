@@ -44,3 +44,8 @@ htmlcov/
 # claim_url disk cache (SerpApi/LLM/page bodies)
 .claim_url_cache/
 *_cache/
+
+# Local run artifacts (numbered trace dumps + scratch fetched markdown)
+trace/run*/
+trace/yttv/
+firecrawl_markdown/

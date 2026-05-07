@@ -6,21 +6,40 @@ Project-level guidance for Claude Code. Per-folder CLAUDE.md files own locality-
 
 `claim_url` is a Python package that finds official-source URLs evidencing patent-claim limitations for a given product. The previous monolithic `claim_url.py` (~2000 lines) was refactored into a `src/`-layout package with isolated, testable components.
 
-### Pipeline (seven stages + post-process)
+### Pipeline (8 stages + post-process)
 
-1. **Agent 1** (`agents/domain.py::DomainIdentificationAgent`) — discover vendor/official domains via SerpApi probes + LLM classification.
-2. **Extractor** (`agents/extractor.py::ClaimElementExtractor`) — decompose claim into 4–8 `ClaimElement`s.
-3. **Sub-product probe** (`agents/subproduct.py::SubProductAgent`, default on, disable with `--no-subproduct-probe`) — map the claim onto relevant sub-products / feature surfaces of `{product}`. Generic; no product-specific hardcoding. Output seeds the rewriter and forces per-surface query coverage.
-4. **Rewriter** (`agents/rewriter.py::QueryRewriteAgent`) — receives full claim text + sub-products; translates patent jargon → product user-facing vocabulary, distributes queries across surfaces.
-5. **Search** (`agents/search.py::OfficialDomainSearch`) — `<query> site:<domain>` per (rewritten query, domain) pair.
-6. **Page fetch** (`fetch.py::PageFetcher`, optional `--fetch-pages`) — parallel HTTP fetch + HTML strip → ~4000 chars body to Agent 2.
-7. **Agent 2** (`agents/relevance.py::RelevanceCheckingAgent`) — score each URL 0.0–1.0 against the full claim text + decomposed elements.
+1. **Agent 1** (`agents/domain.py::DomainIdentificationAgent`) — discover vendor/official domains via SerpApi probes + LLM classification. Multi-tenant hosts (github.com, gitlab.com, medium.com, youtube.com, npmjs.com, …) are emitted with the vendor path attached (e.g. `github.com/Netflix`); bare multi-tenant hosts are dropped because `site:github.com` matches every tenant on the platform. Each `DomainCandidate` carries an optional `path_prefix` consumed by search, expansion, and the URL post-filter (`utils.url_matches_spec`).
+2. **Extractor** (`agents/extractor.py::ClaimElementExtractor`) — decompose claim into 4–8 `ClaimElement`s. Receives selected paragraphs of patent description as context.
+3. **Use-case classifier** (`agents/use_case.py::UseCaseAgent`, default on, `--no-use-case-classification`) — single LLM call labels the claim's technical use-case (e.g. "vehicle dispatch", "on-device autocomplete") and emits 3–6 vocabulary anchor tokens. Shared with the sub-product probe + rewriter so they target the same use-case.
+4. **Sub-product probe** (`agents/subproduct.py::SubProductAgent`, default on, `--no-subproduct-probe`) — SerpApi catalogue probes + catalogue page-body fetch (8000 chars per page) + single LLM filter call against claim + use-case anchors. Generic; no product-specific hardcoding. Output seeds rewriter and forces per-surface query coverage. **Two-step variant** (Step A enumerate → Step B filter, two LLM calls) is opt-in via `--subproduct-two-step` — A/B against single-step showed no top-k gain on test patent, default off.
+5. **Rewriter** (`agents/rewriter.py::QueryRewriteAgent`) — full claim text + sub-products + use-case anchors. Translates patent jargon → product vocabulary. Constraints: every query MUST contain at least one of (surface name, use-case anchor, product brand); per-surface cap `ceil(total_queries / num_surfaces)`.
+6. **Search** (`agents/search.py::OfficialDomainSearch`) — `<query> site:<domain>` per (rewritten query, domain) pair.
+7. **Page fetch** (`fetch.py::PageFetcher`, default on `--fetch-pages`) — parallel HTTP fetch + HTML strip → 4000–6000 chars body. Three-tier fallback chain when requests path fails or returns empty: **(a)** Firecrawl scrape (if `FIRECRAWL_API_KEY` env var set) — bypasses bot detection without local browser, honours Firecrawl `max_age` for free 48h cache; **(b)** Playwright Chromium (adaptive: hosts emitting ≥4 consecutive empty bodies with ≥5 observations auto-promoted, default on `--fetch-adaptive-playwright`). Playwright sync API is pinned to a single dedicated worker thread inside the backend (greenlet binding requirement); page-fetch workers submit and block on the result. Raw HTML cached in memory for the harvest stage.
+8. **Index-page link harvest** (`agents/expansion.py::IndexLinkHarvester`, default on, `--no-index-link-harvest`) — parse raw HTML of likely index/overview pages → enqueue inline same-domain anchors as additional candidates. Multi-pass (index → sub-index → leaves). Cap `--index-link-harvest-max-total` (default 200). No extra SerpApi cost. Catalogue pages from Stage 4 seeded as additional index candidates. Newly-harvested URLs get a second page-fetch pass.
+9. **Agent 2** (`agents/relevance.py::RelevanceCheckingAgent`) — score each URL 0.0–1.0 against the full claim text + decomposed elements. Description is NOT injected here (tried, made results worse — see EXPERIMENTS.md).
 
 After scoring, two generic post-processors run before top-k slicing (both default on):
 - **Diversity guard** — within tied-score tiers, cap URLs per path-prefix bucket so one feature area can't drown the top-k.
-- **Element coverage** — append the highest-scoring candidate (above floor) for any claim element with no representative in top-k.
+- **Two-tier element coverage** — Pass 1 at `--coverage-score-floor` (default 0.5) appends the highest-scoring candidate for any uncovered element. Pass 2 at `--coverage-score-floor-secondary` (default 0.25) relaxes the floor for any element still missing.
+
+#### Opt-in mechanisms (default OFF, code retained for A/B)
+
+- **`--subproduct-two-step`** — Splits Stage 4 into enumerate + filter. Theoretical popular-API debias; no measurable top-k gain in run13 vs run10 single-step (both 5/13).
+- **`--path-expansion`** + family — `agents/expansion.py::PathNeighborhoodExpander`. Issues follow-up SerpApi queries under hot path prefixes. Overlaps with index-link harvest (free) and leaks into off-topic sub-trees in run13. Code in `agents/expansion.py` for revisit; flag flipped on enables it.
 
 `finder.py::ClaimURLFinder.run` orchestrates all stages and returns a `FinderResult`.
+
+#### Optional UI flow: review domains before search
+
+The Gradio UI exposes a **Discover Domains** button that runs only Stage 1 and renders the result as a checklist. The user can uncheck dead/irrelevant domains before pressing Run Search; the surviving subset is passed to `ClaimURLFinder.run` via the new `preselected_domains: list[DomainCandidate]` parameter, bypassing Stage 1 in the main pipeline. This saves the Stage 1 SerpApi probes + LLM classify call when the user already knows the domain shortlist (or wants to drop one).
+
+Public surface:
+- `ClaimURLFinder.discover_domains(product, domain_override) -> list[DomainCandidate]` — Stage 1 standalone.
+- `ClaimURLFinder.run(..., preselected_domains=None)` — when set, skips internal `_resolve_domains` and keeps the candidate's rationale/confidence/path_prefix intact in the result.
+
+The CLI is unaffected — `--domains` still maps to the existing `domain_override` codepath, which only carries host strings.
+
+For an end-to-end walkthrough with real example data from `trace/run13/`, read [HOW_IT_WORKS.md](HOW_IT_WORKS.md). For run-by-run experiment history (what's been tried, what worked, what failed), read [trace/EXPERIMENTS.md](trace/EXPERIMENTS.md).
 
 All LLM calls go through `llm.LLMClient` — abstracts OpenAI / Anthropic / Google behind a single `complete(...)` with retry+backoff (jittered exponential). JSON outputs parsed via `utils.parse_json_object` (handles markdown fences, prose-wrapped JSON).
 
@@ -118,6 +137,43 @@ $PY -m claim_url --product "YouTube TV" --claim-file claim.txt \
 # Requires: pip install playwright && playwright install chromium
 $PY -m claim_url --product "YouTube TV" --claim-file claim.txt --playwright-fetch
 
+# Adaptive Playwright fallback (default ON) — auto-promotes bot-blocked hosts
+# to Playwright after 4 consecutive empty bodies. Disable to keep a pure
+# requests-only fetcher (faster smoke runs, weaker recall on bot-blocked hosts).
+$PY -m claim_url --product "YouTube TV" --claim-file claim.txt --no-fetch-adaptive-playwright
+
+# Use-case classifier (default ON) — labels the claim's domain in 2-6 words and
+# emits 3-6 vocabulary anchors. Shared with sub-product probe + rewriter +
+# path expander. Disable to skip one LLM call when the claim is generic enough
+# that all downstream stages would derive the same domain anyway.
+$PY -m claim_url --product "Google Maps Platform" --claim-file claim.txt --no-use-case-classification
+
+# Path-neighborhood expansion (default OFF — opt-in A/B). Issues follow-up
+# SerpApi queries under hot path prefixes. Overlapped with --index-link-harvest
+# in run13 and leaked off-topic. Flip on to A/B.
+$PY -m claim_url --product "Google Maps Platform" --claim-file claim.txt \
+  --path-expansion --path-expansion-max-followups 12
+
+# Sub-product two-step harvest (default OFF — opt-in A/B). Splits Stage 4
+# into enumerate + filter (2 LLM calls). No measurable top-k gain vs single-
+# step on test patent. Flip on to A/B.
+$PY -m claim_url --product "Google Maps Platform" --claim-file claim.txt --subproduct-two-step
+
+# Index-page link harvest (default ON) — parses raw HTML of cached index pages
+# and enqueues inline same-domain anchors as additional candidates. No SerpApi
+# cost. Tune cap or disable.
+$PY -m claim_url --product "Google Maps Platform" --claim-file claim.txt \
+  --index-link-harvest-max-total 400
+$PY -m claim_url --product "Google Maps Platform" --claim-file claim.txt --no-index-link-harvest
+
+# Two-tier element coverage — primary floor + relaxed secondary floor for niche
+# surfaces. Set secondary to 0.0 to disable the fallback pass.
+$PY -m claim_url --product "Google Maps Platform" --claim-file claim.txt \
+  --coverage-score-floor 0.5 --coverage-score-floor-secondary 0.25
+
+# Eval a trace run against a reference URL set
+$PY scripts/eval_runs.py trace/run13 --refs trace/refs_run34.txt
+
 # Run the test suite
 $PY -m pytest
 
@@ -134,6 +190,7 @@ $PY -m pytest --cov=claim_url --cov-report=term-missing
 - `PCS_API_KEY` — required when using `--patent` / "Load Claim from Patent" in UI.
 - `PCS_API_BASE_URL` — required when using `--patent`.
 - `PCS_API_PORT` — optional; used in proxy-mode PCS deployments.
+- `FIRECRAWL_API_KEY` — optional. When set, Stage 7's page fetcher uses Firecrawl as a fallback ahead of Playwright whenever the requests path fails or returns an empty body. Bypasses bot detection (e.g. `support.google.com`) without spinning up Chromium. Install SDK with `pip install firecrawl-py` (or `pip install ".[firecrawl]"` / `.[all]`). Logged as `Firecrawl rescued ...` when it fires.
 
 ⚠️ **Env var name mismatch:** local `.env` may define `SERP_API_KEY` but the package reads `SERPAPI_API_KEY`. The CLI auto-loads `.env` via `python-dotenv`, but the variable name still has to match. Either rename in `.env` to `SERPAPI_API_KEY` or `export SERPAPI_API_KEY=$SERP_API_KEY` before running.
 
@@ -166,3 +223,8 @@ How to apply: Always wrap Gradio textbox inputs with the existing `_text(value)`
 DO NOT: add speculative parameters to PCS API payloads without confirming the API supports them.
 Why: Adding `"claim_num": 1` to the `parse_claims` payload caused the API to return `{"data": null}`. The original `unwrap()` then returned `None`, and the subsequent `.get()` call crashed with `AttributeError: 'NoneType' object has no attribute 'get'`.
 How to apply: Only send payload fields that appear in the working `main()` reference implementation. If an API feature is uncertain, check the response structure first (log/print the raw response) before building logic on top of it. Also fix `unwrap()` defensively: only unwrap `data["data"]` when its value is a non-None dict/list.
+
+**2026-05-07 — Drove Playwright sync API from a multi-worker ThreadPoolExecutor**
+DO NOT: call Playwright sync API methods (`page.goto`, `browser.new_context`, etc.) from any thread other than the one that called `sync_playwright().__enter__()`. A `threading.Lock` does not help — the API binds to the greenlet of the init thread, not just to mutual exclusion.
+Why: `_PlaywrightBackend.fetch` was invoked from the page-fetch `ThreadPoolExecutor(max_workers=8)` workers. First call to a host (e.g. `support.google.com` after adaptive promotion) initialised Playwright on whichever worker happened to win the lock; subsequent calls from sibling workers crashed with `greenlet.error: Cannot switch to a different thread`.
+How to apply: Pin all Playwright work to one OS thread. `_PlaywrightBackend` now owns a `ThreadPoolExecutor(max_workers=1)`; every public method (`_ensure_started`, `fetch`, `close`) submits to it and the caller blocks on `future.result()`. Same rule applies to any future sync-API browser automation library (Puppeteer-py, undetected-chromedriver sync mode, etc.).

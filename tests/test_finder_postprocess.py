@@ -104,13 +104,50 @@ def test_coverage_skips_element_already_covered() -> None:
 
 
 def test_coverage_skips_when_no_candidate_above_floor() -> None:
-    finder = _finder(coverage_score_floor=0.5)
+    finder = _finder(
+        coverage_score_floor=0.5, coverage_score_floor_secondary=0.0,
+    )
     top_k = [_url("/a", 1.0, matched=["E1"])]
     pool = top_k + [_url("/b", 0.3, matched=["E2"])]  # below floor
     result = finder._ensure_coverage(
         top_k_urls=top_k, pool=pool, element_ids=["E1", "E2"]
     )
     assert len(result) == 1
+
+
+def test_coverage_two_tier_secondary_pass_picks_lower_floor() -> None:
+    """Element uncovered after primary pass is rescued by secondary pass at
+    a lower floor — niche surfaces routinely sit at 0.25-0.50."""
+    finder = _finder(
+        coverage_score_floor=0.5, coverage_score_floor_secondary=0.25,
+    )
+    top_k = [_url("/a", 1.0, matched=["E1"])]
+    pool = top_k + [_url("/b", 0.3, matched=["E2"])]  # below primary, above secondary
+    result = finder._ensure_coverage(
+        top_k_urls=top_k, pool=pool, element_ids=["E1", "E2"]
+    )
+    assert len(result) == 2
+    assert result[1].url.endswith("/b")
+
+
+def test_coverage_secondary_pass_does_not_double_append() -> None:
+    """When primary pass already covered an element, secondary pass must
+    not append a redundant lower-tier URL for the same element."""
+    finder = _finder(
+        coverage_score_floor=0.5, coverage_score_floor_secondary=0.25,
+    )
+    top_k = [_url("/a", 1.0, matched=["E1"])]
+    pool = top_k + [
+        _url("/b", 0.7, matched=["E2"]),  # covers E2 in primary pass
+        _url("/c", 0.3, matched=["E2"]),  # would re-cover E2 if logic is buggy
+    ]
+    result = finder._ensure_coverage(
+        top_k_urls=top_k, pool=pool, element_ids=["E1", "E2"]
+    )
+    assert [u.url for u in result] == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
 
 
 def test_coverage_skips_already_in_top_k() -> None:

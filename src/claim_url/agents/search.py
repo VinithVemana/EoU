@@ -9,9 +9,13 @@ from dataclasses import dataclass
 from typing import Iterable, Optional
 
 from claim_url._progress import progress
-from claim_url.models import ClaimElement, RawHit, SearchResult
+from claim_url.models import ClaimElement, DomainSpec, RawHit, SearchResult
 from claim_url.serp import SerpApiClient
-from claim_url.utils import domain_matches, normalize_domain
+from claim_url.utils import (
+    canonicalize_url,
+    parse_domain_spec,
+    url_matches_spec,
+)
 
 
 LOG = logging.getLogger("claim-url-finder")
@@ -64,38 +68,51 @@ class OfficialDomainSearch:
         *,
         product: str,  # noqa: ARG002 - retained for API symmetry with element.queries
         elements: Iterable[ClaimElement],
-        domains: Iterable[str],
+        domains: Iterable,
     ) -> list[RawHit]:
-        domain_list = list(domains)
+        # Accept either DomainSpec instances or bare host strings (back-compat
+        # for callers that pre-date path-scoped domains, including older
+        # tests). Each spec carries its host + optional vendor path prefix.
+        spec_list: list[DomainSpec] = []
+        for d in domains:
+            if isinstance(d, DomainSpec):
+                spec_list.append(d)
+                continue
+            parsed = parse_domain_spec(str(d))
+            if parsed is not None:
+                spec_list.append(parsed)
         element_list = list(elements)
 
-        plan: list[tuple[ClaimElement, str, str]] = [
-            (element, base_query, domain)
+        plan: list[tuple[ClaimElement, str, DomainSpec]] = [
+            (element, base_query, spec)
             for element in element_list
             for base_query in element.queries(product)
-            for domain in domain_list
+            for spec in spec_list
         ]
 
+        # Dedupe key uses the rendered site: target so identical (query,
+        # site) pairs share an API call even if expressed via different
+        # DomainSpec instances.
         unique_pairs: list[tuple[str, str]] = list(
-            dict.fromkeys((bq, d) for _, bq, d in plan)
+            dict.fromkeys((bq, s.site_query()) for _, bq, s in plan)
         )
         summary = SearchSummary(plan_size=len(plan), unique_queries=len(unique_pairs))
 
         results_map: dict[tuple[str, str], list[SearchResult]] = {}
 
         def _run_one(
-            base_query: str, domain: str
+            base_query: str, site_target: str
         ) -> tuple[tuple[str, str], list[SearchResult], bool]:
-            full_query = f"{base_query} site:{domain}"
+            full_query = f"{base_query} site:{site_target}"
             try:
                 results = self._serp.search(full_query, num=self.per_domain)
-                return (base_query, domain), results, True
+                return (base_query, site_target), results, True
             except Exception as exc:
                 LOG.warning(
-                    "Search failed query=%r domain=%s error=%s",
-                    base_query, domain, exc,
+                    "Search failed query=%r site=%s error=%s",
+                    base_query, site_target, exc,
                 )
-                return (base_query, domain), [], False
+                return (base_query, site_target), [], False
 
         bar = progress(total=len(unique_pairs), desc="SerpApi search", unit="q")
         try:
@@ -103,7 +120,7 @@ class OfficialDomainSearch:
                 workers = max(1, min(self.max_workers, len(unique_pairs)))
                 with ThreadPoolExecutor(max_workers=workers) as pool:
                     futures = [
-                        pool.submit(_run_one, bq, d) for bq, d in unique_pairs
+                        pool.submit(_run_one, bq, s) for bq, s in unique_pairs
                     ]
                     for future in as_completed(futures):
                         key, results, ok = future.result()
@@ -116,11 +133,11 @@ class OfficialDomainSearch:
             bar.close()
 
         hits: list[RawHit] = []
-        for element, base_query, domain in plan:
-            results = results_map.get((base_query, domain), [])
+        for element, base_query, spec in plan:
+            results = results_map.get((base_query, spec.site_query()), [])
             if not results:
                 summary.empty_responses += 1
-            hits.extend(self._filter_results(results, element, domain, summary))
+            hits.extend(self._filter_results(results, element, spec, summary))
 
         self.last_summary = summary
         self.last_query_results = results_map
@@ -140,12 +157,12 @@ class OfficialDomainSearch:
         self,
         results: list[SearchResult],
         element: ClaimElement,
-        domain: str,
+        spec: DomainSpec,
         summary: SearchSummary,
     ) -> Iterable[RawHit]:
+        seen: set[str] = set()
         for result in results:
-            url_domain = normalize_domain(result.url) or ""
-            if not domain_matches(url_domain, domain):
+            if not url_matches_spec(result.url, spec):
                 continue
 
             if self.exclude_url_patterns and any(
@@ -154,13 +171,21 @@ class OfficialDomainSearch:
                 summary.excluded += 1
                 continue
 
+            # Collapse locale/tracking variants (e.g. ?hl=en vs ?hl=en-GB)
+            # so downstream dedupe / scoring / top-k don't see them as
+            # distinct URLs.
+            canonical = canonicalize_url(result.url)
+            if canonical in seen:
+                continue
+            seen.add(canonical)
+
             summary.hits_kept += 1
             yield RawHit(
-                url=result.url,
+                url=canonical,
                 title=result.title,
                 snippet=result.snippet[:1000],
                 element_id=element.id,
-                domain=domain,
+                domain=spec.host,
             )
 
 

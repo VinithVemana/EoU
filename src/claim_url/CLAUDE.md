@@ -18,7 +18,7 @@ logging_setup.py     # configure_logging() — called only by CLI
 _progress.py         # tqdm shim (no-op fallback when tqdm not installed)
 serp.py              # SerpApiClient with bounded retries + optional DiskCache
 fetch.py             # PageFetcher: shared requests.Session + ThreadPoolExecutor.fetch_many() + optional DiskCache
-finder.py            # ClaimURLFinder.run() orchestrates the six stages
+finder.py            # ClaimURLFinder.run() orchestrates the pipeline; .discover_domains() runs Stage 1 standalone for the UI's review-domains flow
 cache.py             # DiskCache: namespaced sha256-keyed JSON cache for SerpApi/LLM/page bodies
 trace.py             # TraceWriter: per-stage JSON artifacts when --trace-dir is set
 agents/              # see agents/CLAUDE.md
@@ -65,6 +65,13 @@ If you add a new flag, update the docstring at the top of `cli.py` (per global m
 - Optional `DiskCache` layer (CLI passes one in by default) — non-empty bodies persist across runs keyed by `(url, max_chars)`.
 - HTML stripped with regex (intentionally not BeautifulSoup — tolerates broken HTML, no extra dep).
 - Hands ~4000 chars of body text to Agent 2. Larger windows did not improve scores in past testing and increased token cost.
+
+### Fallback chain when requests fails / returns empty
+
+1. **Firecrawl** (`_FirecrawlBackend`) — used when `FIRECRAWL_API_KEY` env var is set. SDK call: `Firecrawl(api_key).scrape(url, formats=["markdown","html"], only_main_content=True, max_age=172_800_000, parsers=["pdf"])`. Returns markdown body + raw HTML. Tried before Playwright on every empty/failed body and on every URL whose host is already flagged bot-blocked.
+2. **Playwright Chromium** (`_PlaywrightBackend`) — adaptive: hosts emitting ≥4 consecutive empty bodies with ≥5 observations are auto-promoted (`--no-fetch-adaptive-playwright` to disable).
+
+**Threading invariant for Playwright:** the sync API binds to the greenlet of the thread that called `sync_playwright().__enter__()` — invoking it from any other thread raises `greenlet.error: Cannot switch to a different thread`. Locking is not enough. `_PlaywrightBackend` therefore owns a `ThreadPoolExecutor(max_workers=1)`; **every** call (`_ensure_started`, `fetch`, `close`) is submitted to that pinned thread and the caller blocks on `future.result()`. Concurrency from the outer `--fetch-workers` pool is preserved (workers wait), but Chromium operations themselves are serialised.
 
 ## SerpApi (`serp.py`)
 

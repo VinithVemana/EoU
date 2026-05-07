@@ -2,6 +2,8 @@
 
 **Example used throughout:** `--product "Google Maps Platform" --patent "US7629884B2" --claim-number 1`
 
+All numbers, queries, sub-products, scores, and example URLs in this doc are taken verbatim from the artifacts in `trace/run13/` (the most recent full run). When this doc says "84 SerpApi calls" or "8 sub-products picked" that is the literal value the pipeline emitted, not a hypothetical.
+
 ---
 
 ## What You Give It
@@ -12,7 +14,7 @@ Patent:       US7629884B2
 Claim number: 1
 ```
 
-The tool fetches the claim text and patent description from the patent database, then finds official documentation URLs that are evidence for each sentence in the claim.
+The tool fetches the claim text and patent description from the patent database (PCS API), then finds official documentation URLs that are evidence for each sentence in the claim.
 
 ---
 
@@ -31,27 +33,63 @@ In other words: **a driver app that gets dispatched to an address**.
 
 ---
 
+## Pipeline at a Glance
+
+```
+INPUT
+  ▼
+[1] Domain discovery               (LLM + SerpApi probes)
+[2] Claim element extraction       (LLM, with spec)
+[2a] Use-case classification       (LLM)              ← KEPT
+[2b] Sub-product probe             (SerpApi + fetch + 1 LLM call)
+[3] Query rewriting                (LLM)
+[4] SerpApi search                 (per query × domain)
+[5] Page fetch (pass 1)            (HTTP / Playwright)
+[5b] Index-page link harvest       (parse cached HTML) ← KEPT
+[5c] Page fetch (pass 2)           (HTTP / Playwright) ← for harvested
+[6] Relevance scoring              (LLM, batched)
+[POST] Diversity guard + element coverage (two-tier floor)
+  ▼
+TOP-K
+```
+
+### What's NEW vs prior simple baseline (run4)
+- **Use-case classifier (Stage 2a)** — kept. Single LLM call extracting anchor tokens shared with Stages 4–5.
+- **Index-page link harvest (Stage 5b)** — kept. Zero-cost retrieval boost; pulls in Fleet Engine pages SerpApi never returned.
+- **Adaptive Playwright fallback (Stage 5)** — kept. Auto-promotes bot-blocked hosts.
+- **Anchor rule + per-surface cap (Stage 3)** — kept. Prompt-only constraints.
+- **Two-tier coverage** — kept. Strict primary floor + relaxed fallback.
+
+### What's available but OFF by default (opt-in A/B)
+- **`--subproduct-two-step`** — splits Stage 2b into enumerate + filter (2 LLM calls). No measurable top-k gain on test patent (run10 single-step = run13 two-step = 5/13). Code retained for revisit.
+- **`--path-expansion`** + family — Stage 4b. Follow-up SerpApi queries under hot path prefixes. Overlapped with index harvest, leaked off-topic. Code in `agents/expansion.py` for revisit.
+
+Sections below describe the active default pipeline. Disabled stages mentioned where relevant.
+
+---
+
 ## Stage 1 — Find the Official Domains
 
 **Goal:** What websites does Google Maps Platform officially use?
 
-The tool runs 5 SerpApi searches:
+The tool runs 5 SerpApi probes:
 - `"Google Maps Platform official website"`
 - `"Google Maps Platform official support"`
 - `"Google Maps Platform documentation official"`
-- ... etc.
+- `"Google Maps Platform site:google.com"`
+- `"Google Maps Platform developer site"`
 
-It collects all URLs returned, then asks an LLM: *"Which of these domains are officially owned by Google Maps Platform?"*
+URLs collected, then one LLM call asks: *"Which of these domains are officially owned by Google Maps Platform?"*
 
-**Result from this run:**
+**Run13 result (`01_domains.json`):**
 
 | Domain | Confidence | Why |
 |--------|-----------|-----|
 | `developers.google.com` | 99% | Official developer docs and API references |
 | `mapsplatform.google.com` | 98% | Official product/marketing site |
-| `support.google.com` | 93% | Google Help Center (Maps help articles) |
+| `cloud.google.com` | 95% | Maps Platform terms, support hub, status |
 
-All subsequent searches are restricted to these 3 domains.
+All subsequent searches restricted to these 3 domains.
 
 ---
 
@@ -59,384 +97,466 @@ All subsequent searches are restricted to these 3 domains.
 
 **Goal:** What are the individual technical requirements in the claim?
 
-One LLM call reads the full claim text and splits it into 4–8 elements. Each element is one logical requirement.
+One LLM call reads the full claim text + selected paragraphs of the patent description, then splits the claim into 4–8 elements. Each element is one logical requirement.
 
-**Result:**
+**Run13 result (7 elements, from `02_elements.json`):**
 
-| ID | Element (what the claim requires) | Keywords |
-|----|----------------------------------|----------|
-| E1 | Dispatch terminal receives address + event data, looks it up in location database | dispatch terminal, address lookup, event data, database correlation |
-| E2 | Mobile device has a map display and knows its own GPS location | mobile terminal, map display, GPS receiver, current location |
-| E3 | Mobile sends its location to the dispatch terminal over a comms channel | wireless transmission, send location data, mobile to dispatch |
-| E4 | Dispatch terminal stores the mobile's location in memory | store in memory, location data storage |
-| E5 | When conditions are met, dispatch terminal sends the address back to the mobile | criteria met, conditional transmission, dispatch response |
-| E6 | Mobile automatically shows the address on its map display | automatic input, map display update, destination address |
+| ID | Element | Keywords |
+|----|---------|----------|
+| E1 | Dispatch terminal receives address + event data, correlates address to location-based data in DB | `dispatch terminal, address lookup, event data, database correlation, location-based data` |
+| E2 | Mobile second terminal has map display + obtains its own location via GPS | `mobile terminal, map display, GPS receiver, current location, location system` |
+| E3 | Second terminal transmits its location to first terminal over comms channel | `wireless transmission, communications channel, send location data, terminal-to-terminal, uplink` |
+| E4 | First terminal stores received location data in memory | `store location data, memory buffer, retain received data, dispatch memory, data storage` |
+| E5 | When criteria met, first terminal sends correlated location + event back to second | `criteria-based dispatch, conditional transmission, event trigger, send location data, dispatch criteria` |
+| E6 | Second terminal automatically enters received data into display unit (no user action) | `automatic input, no user intervention, auto-populate, GPS input, terminal display input` |
+| E7 | Second terminal displays map including the first address | `map display, route map, address display, correlated location, navigation map` |
+
+The patent description biases element labels toward concrete vocabulary the inventor used ("dispatch terminal", "GPS receiver") instead of fully abstract claim language.
 
 ---
 
-## Stage 3 — Find Relevant Sub-Products (Sub-Product Probe)
+## Stage 2a — Classify the Use-Case (NEW)
 
-**Goal:** Google Maps Platform has 20+ APIs. Which ones are most likely to document this dispatch/location behaviour?
+**Goal:** Pin down the technical domain in 2–6 words once, then share it with every downstream stage.
 
-The tool probes SerpApi with queries like:
+Without this stage, three downstream stages (sub-product probe, rewriter, expander) each independently guessed at the claim's domain from their slice of context. Multi-API umbrella products like Google Maps Platform have ~20 surfaces; if the sub-product probe guesses "geocoding" while the rewriter guesses "navigation", queries diverge and miss real docs.
+
+One LLM call (`agents/use_case.py::UseCaseAgent`) reads the full claim + spec context and emits a single use-case label + a small set of vocabulary anchor tokens.
+
+**Run13 result (`02a_use_case.json`):**
+
+```json
+{
+  "use_case": "Mobile dispatch mapping",
+  "anchors": [
+    "dispatch", "GPS receiver", "map display",
+    "location based data", "wireless infrastructure", "event codes"
+  ],
+  "alternative_use_cases": ["fleet routing", "field service dispatch"]
+}
+```
+
+These anchors are passed to:
+- **Sub-product probe** — biases catalogue filtering toward dispatch/fleet surfaces.
+- **Query rewriter** — every emitted query must contain at least one anchor (or sub-product name, or product brand).
+- **Path-neighborhood expander** — uses anchors as the second query template under hot path prefixes.
+
+Result: every downstream stage targets the same use-case instead of re-deriving it.
+
+---
+
+## Stage 2b — Sub-Product Probe
+
+**Goal:** Google Maps Platform has 20+ APIs. Which ones likely document this dispatch + mobile-location + map-display behaviour?
+
+The probe is **evidence-based** — it never relies on the LLM's memory of the catalogue. Three phases:
+
+### Phase 1 — Catalogue evidence collection
+
+SerpApi probes (parallel, max 5 workers):
 - `"Google Maps Platform products list"`
 - `"Google Maps Platform all APIs"`
+- `"Google Maps Platform documentation index"`
 - `"products site:developers.google.com"`
 - `"documentation overview site:mapsplatform.google.com"`
+- … (~12 probe templates)
 
-It fetches the body text of the top catalogue pages (e.g. `mapsplatform.google.com/maps-products/`) and reads which APIs are listed there.
+These return real catalogue / overview / product-list pages on the official domains.
 
-Then one LLM call asks: *"Given the claim is about dispatch + mobile location + map display, which of these sub-products are relevant?"*
+### Phase 2 — Catalogue page-body fetch
 
-**Result (8 sub-products selected):**
+The top 8 catalogue candidates are ranked by `(1 + keyword_score) / (1 + path_depth)` with a +0.25 boost for `developers.*` / `docs.*` / `devdocs.*` subdomains (fix in commit `0da3ae8` after run4: deep paths with many keyword segments were outranking shallow product index pages).
+
+Their bodies are fetched (8000 chars each, raised from 4000 in this iteration so the entire menu fits). Niche surfaces like Fleet Engine, Mobility SDK, On-Demand Rides routinely appear as inline anchors on `mapsplatform.google.com/maps-products/` even when SerpApi never surfaces them as titles.
+
+### Phase 3 — LLM filter (default: single-step)
+
+Default: one combined LLM call with catalogue evidence + claim + use-case anchors → ranks sub-products. The use-case anchors (`"dispatch"`, `"GPS receiver"`, `"map display"`) bias the filter toward surfaces matching the claim's domain.
+
+**Opt-in alternative (`--subproduct-two-step`):** Split into Step A (enumerate every visible sub-product, no relevance filter) → Step B (rank enumeration against claim + use-case). Theoretical popular-API debias. A/B against single-step on test patent showed no measurable top-k gain (run10 single-step = run13 two-step = 5/13). Code retained for future patents where popular-API bias may matter more.
+
+**Run13 result (`02b_subproducts.json`, 8 picked):**
 
 | Sub-product | Why selected |
 |-------------|-------------|
-| Routes API | Dispatch involves routing and directions |
-| Navigation SDK for Android | Mobile terminal with map display and turn-by-turn |
-| Navigation SDK for iOS | Same, iOS version |
-| Maps JavaScript API | Web-based map display |
-| Maps Embed API | Simple map display of an address |
-| Geocoding API | Converting an address to coordinates (E1) |
-| Geolocation API | Mobile getting its own location (E2) |
-| Maps SDK for Android | Mobile map display with location |
+| Route Optimization API | Dispatching location + event data, returning routing info — closest match to a dispatch system |
+| Route Optimisation agent | Fleet/dispatch vocab aligns with claim's mobile dispatch workflow |
+| Navigation SDK for Android | Mobile terminal + automatic location + map display |
+| Navigation SDK for iOS | Same, iOS variant |
+| Navigation SDK | Umbrella SDK; in-vehicle/mobile navigation after dispatch |
+| Routes API | Transmitting location-based data + map display to destination |
+| Compute Routes | Vehicle routing + directions overlapping with terminal-to-terminal flow |
+| Maps URLs | Automatic map display of received address |
 
-These sub-products are passed to the next stage so the query writer can generate searches targeting each one.
+Note: Fleet Engine itself didn't make this run13 list (Fleet Engine surfaces only when the catalogue probe surfaces it as a candidate, which depends on the run's SerpApi snapshot). The path-neighborhood expansion + index-link harvest stages below close that gap by surfacing Fleet Engine pages anyway — Driver SDK pages reach the top 10 with score 0.95.
 
 ---
 
-## Stage 4 — Rewrite Elements into Search Queries
+## Stage 3 — Rewrite Elements into Search Queries
 
 **Goal:** Turn patent jargon into Google product vocabulary that SerpApi will find.
 
-The patent says *"remote dispatch terminal receives location-based data"*. No Google doc uses those words. Google docs say things like *"Geolocation API device location"* or *"Navigation SDK location sharing"*.
+The patent says *"remote dispatch terminal receives location-based data"*. No Google doc uses those words. Google docs say *"Geolocation API device location"*, *"Navigation SDK location sharing"*, etc.
 
-One LLM call gets the claim text + the 8 sub-products and generates **4 search queries per element** (24 queries total).
+One LLM call gets the **full claim text** (not just element labels) + the 8 sub-products + the use-case anchors. It generates **4 search queries per element** (28 total for 7 elements).
 
-**Result — queries generated:**
+### Two new constraints (this iteration)
+
+1. **Anchor rule (mandatory).** Every emitted query MUST contain at least one of:
+   - a sub-product / surface name from the list above, or
+   - a use-case anchor token, or
+   - the product name "Google Maps Platform" or its vendor brand.
+
+   Orphan jargon queries like `"dispatch memory location data"` matched zero results on narrow `site:` filters and wasted SerpApi budget. Now forbidden.
+
+2. **Per-surface query cap.** No single sub-product may absorb more than `ceil(total_queries / num_surfaces)` of the queries. With 28 queries × 8 surfaces, cap = 4. Stops the rewriter from clustering all queries on the most popular sub-product.
+
+### Run13 queries (excerpt from `03_queries.json`)
 
 ```
 E1 (dispatch terminal + address lookup):
-  → "Routes API geocode address"
-  → "Geocoding API address lookup"
-  → "dispatch location data geocoding"
-  → "Maps JavaScript API address marker"
+  → "Google Maps Platform Route Optimization API dispatch address lookup"
+  → "Route Optimization API event data database correlation"
+  → "Maps Platform fleet dispatch location based data"
+  → "Route Optimisation agent dispatch criteria address"
 
-E2 (mobile device + own GPS location):
-  → "Navigation SDK for Android current location"
-  → "Navigation SDK for iOS turn-by-turn"
-  → "Maps SDK for Android map display"
-  → "Geolocation API device location"
+E2 (mobile terminal + GPS):
+  → "Navigation SDK Android map display GPS receiver"
+  → "Navigation SDK iOS current location map display"
+  → "Google Maps Platform navigation SDK driver location"
+  → "Navigation SDK turn-by-turn map display"
 
 E3 (mobile sends location to dispatch):
-  → "Geolocation API send location"
-  → "Navigation SDK for Android location sharing"
-  → "mobile location transmission"
-  → "Routes API travel time"
+  → "Routes API send location data communications channel"
+  → "Compute Routes vehicle location transmission"
+  → "Google Maps Platform route optimization fleet uplink"
+  → "Navigation SDK Android location data upload"
 
-E4 (dispatch terminal stores location):
-  → "dispatch memory location data"
-  → "store location data"
-  → "Maps SDK for Android markers"
-  → "Geolocation API coordinates"
+E4 (dispatch stores location):
+  → "Route Optimization API store location data memory"
+  → "Google Maps Platform dispatch memory location data"
+  → "Routes API retain received data"
+  → "Compute Routes vehicle data storage"
 
-E5 (conditional: send address back when criteria met):
-  → "Routes API route optimization"
-  → "conditional transmission event data"
-  → "Navigation SDK for iOS route guidance"
-  → "Maps Embed API interactive map"
+E5 (conditional dispatch when criteria met):
+  → "Route Optimization API dispatch criteria conditional transmission"
+  → "Route Optimisation agent event trigger fleet"
+  → "Google Maps Platform route optimization conditional send"
+  → "Routes API optimization criteria event data"
 
-E6 (mobile auto-displays address on map):
-  → "Maps JavaScript API interactive maps"
-  → "Maps Embed API map display"
-  → "Navigation SDK for Android automatic input"
-  → "Maps SDK for Android destination marker"
+E6 (auto-display received data):
+  → "Navigation SDK automatic input map display"
+  → "Navigation SDK Android no user intervention"
+  → "Google Maps Platform GPS input map display"
+  → "Navigation SDK auto populate destination"
+
+E7 (display map of address):
+  → "Maps URLs map display address"
+  → "Routes API navigation map destination"
+  → "Google Maps Platform map display first address"
+  → "Navigation SDK route map address"
 ```
+
+Every query carries an anchor. No query is just patent jargon. Queries spread across 6 sub-products (Route Optimization, Navigation SDK, Routes API, Compute Routes, Maps URLs, Route Optimisation agent) — none exceeds the cap of 4.
 
 ---
 
-## Stage 5 — Search SerpApi
+## Stage 4 — Search SerpApi
 
 **Goal:** For every (query, domain) pair, get the top 10 URLs from Google.
 
-Each query is run against each of the 3 official domains using `<query> site:<domain>`.
-
-Example:
-- `"Geocoding API address lookup" site:developers.google.com`
-- `"Geocoding API address lookup" site:mapsplatform.google.com`
-- `"Geocoding API address lookup" site:support.google.com`
-
-**Stats from this run:**
+Each unique query × each official domain → `<query> site:<domain>`.
 
 ```
-Query + domain pairs planned:  72
-Unique pairs dispatched:       72
-SerpApi API calls made:        72
-Empty responses (no results):   5
-URLs collected total:         646
+Queries × domains  = 28 × 3 = 84 planned pairs
+Unique pairs       = 84 (no in-run duplicates)
+SerpApi API calls  = 84
+Empty responses    = 7  (queries that SerpApi returned 0 hits for)
+URLs collected     = 718 (after deduping on URL across pairs)
 ```
 
-**Example: query `"dispatch location data geocoding"` on `developers.google.com` returned:**
-- `developers.google.com/maps/documentation/route-optimization/overview`
-- `developers.google.com/maps/documentation/routes/compute-route-matrix-over`
-- `developers.google.com/maps/documentation/places/web-service/place-id`
-- `developers.google.com/maps/documentation/routes/route-usecases`
+Disk cache (`./.claim_url_cache/serp/`) makes re-runs zero-cost — identical (query, domain, num) → identical hash → cache hit.
 
-All 646 URLs go to the next stage.
+**Example: query `"Google Maps Platform navigation SDK driver location"` on `developers.google.com` returned:**
+- `developers.google.com/maps/documentation/navigation/android-sdk/...`
+- `developers.google.com/maps/documentation/mobility/driver-sdk/navigation`
+- `developers.google.com/maps/documentation/mobility/driver-sdk/on-demand`
+- … 10 hits total
+
+Note `mobility/driver-sdk` appears here because the use-case anchor `"driver"` made it into the query — without that anchor the query would have read `"Google Maps Platform navigation SDK location"` and only navigation-tutorial pages would surface.
 
 ---
 
-## Stage 6 — Fetch Page Bodies
+## Stage 4b — Path-Neighborhood Expansion (OPT-IN, default OFF)
 
-**Goal:** SerpApi only returns a short snippet (1–2 sentences of SEO text). That snippet often says nothing about the actual feature. Fetching the full page body gives the scoring agent real evidence.
+`agents/expansion.py::PathNeighborhoodExpander`. Issues follow-up SerpApi queries under hot path prefixes (≥2 hits in the initial search). Up to 12 extra SerpApi calls per run.
 
-The tool makes HTTP requests to each unique URL and extracts the first **4,000 characters** of readable text (HTML tags stripped).
+**Why default off:** Run13 (with this on) added 28 hits, some on-topic (`mobility/services/capabilities`, `mobility/journey-sharing`) but several off-topic (`docs.cloud.google.com/chronicle/soar/...` SOAR docs). Top-k ended at 5/13 — same as run10 / run4 with this off. Index-link harvest (Stage 5b, free) covers the same niche-sub-tree retrieval problem.
 
-**Stats from this run:**
+**Flip on with `--path-expansion`** for A/B testing on patents where index pages are sparse / non-existent.
+
+---
+
+## Stage 5 — Fetch Page Bodies (Pass 1)
+
+**Goal:** SerpApi only returns 1–2 sentences of SEO snippet. That snippet often says nothing about the actual feature. Fetching the full page body gives the relevance agent real evidence.
+
+### Adaptive Playwright fallback (NEW)
+
+The default fetcher uses `requests`. Some hosts (e.g. `support.google.com`) detect bots and serve CAPTCHAs → empty bodies.
+
+The fetcher now tracks per-host empty-body stats. If a host crosses **4 consecutive empty bodies** with **≥5 total observations**, it is marked **bot-blocked** and all subsequent fetches for that host are routed through Playwright Chromium for the rest of the run. No CLI flag flip required. Also retries the URL that triggered the threshold, once, through Playwright.
+
+If Playwright isn't installed, the fetcher logs a warning and continues serving empty bodies for the blocked host (graceful degrade).
+
+### Run13 result (`05_pagefetch.json`)
 
 ```
-Unique URLs to fetch: 434
-Fetched with body:    263  (4,000 chars each)
-Returned empty:       171  (all support.google.com pages → Google blocks bots)
+Unique URLs fetched:  465
+Bodies received:      ~300 (4000–6000 chars each)
+Empty bodies:         ~165 (mostly cloud.google.com legacy archive pages — content gated)
 ```
 
-**Why support.google.com returns empty:**
-Google detects automated requests on `support.google.com` and returns a CAPTCHA page. The plain HTTP fetcher gets 0 bytes of useful content for all 171 support.google.com URLs. The `--playwright-fetch` flag uses a real Chromium browser to bypass this.
+Per-host stats from this run:
+```
+developers.google.com:        54 obs, 0 empties, blocked=false
+cloud.google.com:             39 obs, 0 empties, blocked=false
+codelabs.developers.google.com: 3 obs, 0 empties, blocked=false
+docs.cloud.google.com:        255 obs, 0 empties, blocked=false
+mapsplatform.google.com:       8 obs, 0 empties, blocked=false
+```
 
-**Example — what the page body adds:**
+(No host triggered the blocked threshold this run because the official Maps Platform domains don't bot-block the requests fetcher. The mechanism kicks in for `support.google.com`-style hosts.)
 
-URL: `developers.google.com/maps/documentation/android-sdk/examples/my-location`
+### Why bodies matter — concrete example
+
+URL: `developers.google.com/maps/documentation/mobility/driver-sdk`
 
 SerpApi snippet (what we had without fetching):
-> *"Maps SDK for Android lets you add location-aware features..."*
+> *"The Driver SDK sends real-time location signals to Fleet Engine, which is a required part of enabling location and routing capabilities in Fleet Engine."*
 
-Page body text (first 4,000 chars):
-> *"...enabling My Location layer...the blue dot shows the device's current position...tapping the button re-centers the camera on the device's location...the location data is exposed via the FusedLocationProviderClient..."*
+Page body (first 4000 chars):
+> *"…The Driver SDK communicates the driver's current vehicle location and route progress to Fleet Engine. Fleet Engine uses these updates to dispatch new trips to the driver, route the driver, and present the destination address on the in-app navigation display…"*
 
-**Score without body:** likely 0.5 (snippet too generic)
-**Score with body:** 0.95 (body clearly describes mobile location display on map)
+**Score with snippet only:** likely 0.5
+**Score with body (run13):** **0.95** matching E2, E3, E4, E5, E6, E7.
 
 ---
 
-## Stage 7 — Score Each URL (Relevance Agent)
+## Stage 5b — Index-Page Link Harvest (NEW)
 
-**Goal:** For each of the 434 unique URLs, decide which claim elements it evidences and assign a score 0.0–1.0.
+**Problem this fixes:** Catalogue / overview pages list dozens of sibling sub-pages inline as anchor links. SerpApi rarely surfaces those individual leaf pages. Without harvesting, niche leaves stay invisible.
 
-URLs are batched (35 at a time). Each batch goes to the LLM with:
-- The full claim text
-- All 6 elements (E1–E6) with their keywords
-- Each URL's: title, SerpApi snippet, page body (if fetched)
+### How it works (`agents/expansion.py::IndexLinkHarvester`)
 
-The LLM scores each URL:
+1. Identify likely index pages from the post-fetch corpus. Heuristics:
+   - Path depth in `[1, 3]` segments.
+   - Path contains an "index hint" segment (`documentation`, `docs`, `overview`, `index`, `products`, `apis`, `services`, `solutions`, `platform`, `guide`, `reference`, `catalog`).
+   - OR body length < 1500 chars + tail segment is an index hint (mostly-nav body).
+2. For each index, parse cached raw HTML → extract same-domain anchor `href`s under the index page's path.
+3. Same-host only (no cross-subdomain marketing redirects).
+4. **Multi-pass.** Pass 1 emits direct children. Pass 2+ re-processes any newly-discovered URL that itself looks like an index → grandchildren of deep index hierarchies are surfaced. Common case: `/docs/` parent → `/docs/foo/` → leaves.
+5. Cap: `--index-link-harvest-max-total` (default 200).
+
+The fetcher keeps raw HTML in memory alongside stripped body so this stage requires zero extra HTTP calls. Disk-cached bodies don't carry raw HTML (would bloat cache); for those, a live re-fetch happens via `ensure_raw_html()`.
+
+The sub-product probe's already-fetched catalogue pages (`mapsplatform.google.com/maps-products/`, etc.) are seeded as additional index candidates so the harvester doesn't miss the canonical menu.
+
+### Run13 result
+
+```
+Index-page link harvest: 200 new candidates over 2 passes
+```
+
+**Examples of harvested URLs:**
+- `developers.google.com/maps/documentation/mobility/fleet-engine` ← reference URL D2
+- `developers.google.com/maps/documentation/mobility/fleet-engine/essentials` ← reference URL D3
+- `developers.google.com/maps/documentation/mobility/services/capabilities/driver-routing` ← reference URL D7
+- `developers.google.com/maps/documentation/route-optimization/overview` ← reference URL D11
+
+These all came from harvesting `/maps/documentation/mobility/` and `/maps/documentation/route-optimization/` index pages — pages SerpApi did not return as direct hits.
+
+After harvest, a second page-fetch pass (Stage 5c) populates bodies for the 200 newly-enqueued URLs so they reach the relevance scorer with real content, not just titles.
+
+---
+
+## Stage 6 — Score Each URL (Relevance Agent)
+
+**Goal:** For each URL in the candidate pool, decide which claim elements it evidences and assign a score 0.0–1.0.
+
+URLs are batched (35 at a time, 4 batches in parallel). Each batch goes to the LLM with:
+- Full claim text
+- All 7 elements (E1–E7) with keywords
+- Each URL's title, SerpApi snippet, page body (if fetched)
+
+### Scoring rubric
 
 | Score | Meaning |
 |-------|---------|
 | 1.0 | Page directly describes product behaviour matching a claim limitation |
 | 0.75 | Same feature, different vocabulary |
-| 0.5 | Adjacent/supporting — related feature area |
-| 0.25 | Weak — mentions the topic but doesn't describe the limitation |
+| 0.5 | Adjacent / supporting — related feature area |
+| 0.25 | Weak — mentions topic but doesn't describe limitation |
 | 0.0 | Unrelated (dropped) |
+| Legal/TOS/policies/pricing pages | Force-scored 0.0 (rule added run9) |
 
-**226 URLs scored above 0.0. Top results:**
+### Run13 result (`06_scoring.json`)
+
+```
+Scored count:        300
+Above 0.5:           112
+Above 0.75:           46
+Above 0.9 (top tier): ~20
+```
+
+### Top-scored URLs (run13, before post-processing):
 
 | Score | Elements | URL |
 |-------|---------|-----|
-| 1.00 | E2, E3, E4 | `developers.google.com/maps/documentation/geolocation/overview` |
-| 1.00 | E2, E3, E4 | `developers.google.com/maps/documentation/geolocation/requests-geolocation` |
-| 0.95 | E2, E3, E6 | `developers.google.com/maps/documentation/android-sdk/examples/my-location` |
-| 0.95 | E2–E6 | `developers.google.com/maps/documentation/mobility/driver-sdk` |
-| 0.95 | E1–E3, E5, E6 | `developers.google.com/maps/solutions/product-locator/best-practices` |
+| 0.95 | E2, E3, E6, E7 | `developers.google.com/maps/documentation/navigation/android-sdk/route` |
+| 0.95 | E1, E2, E4, E6, E7 | `cloud.google.com/customers/rapido-maps` |
+| 0.95 | E2–E7 | `developers.google.com/maps/documentation/mobility/driver-sdk` ← reference D13 |
+| 0.90 | E2, E3 | `codelabs.developers.google.com/codelabs/maps-platform/navigation-sdk-101-android` |
+| 0.90 | E1, E2, E3, E4 | `developers.google.com/maps/documentation/navigation/android-sdk/faq` |
+| 0.90 | E2–E7 | `developers.google.com/maps/documentation/mobility/driver-sdk/navigation` ← reference D12 |
+| 0.90 | E2, E6, E7 | `cloud.google.com/customers/dominos-maps` |
+| 0.85 | E2–E7 | `mapsplatform.google.com/maps-products/navigation-sdk/` |
+| 0.85 | E1, E3, E4 | `mapsplatform.google.com/solutions/transportation-and-logistics/` |
+| 0.85 | E2–E7 | `developers.google.com/maps/documentation/mobility/driver-sdk/on-demand` ← reference D9 |
 
-**Example — what the LLM said about the top-scoring URL:**
+3 of 13 reference URLs reach the top 10 directly: D9, D12, D13. Fleet Engine canonical pages (D2–D7) reach the scored pool above 0.5 — they're picked up by the element-coverage guard below.
 
-URL: `developers.google.com/maps/documentation/geolocation/overview`
-Score: **1.0**
-Rationale: *"Official Geolocation API overview explains determining a device's location from cell towers/Wi-Fi and returning location data, which maps directly to mobile location acquisition (E2) and transmission to a server (E3, E4)."*
+### Why the description is NOT used at this stage
 
----
-
-## Post-Processing — Diversity + Element Coverage
-
-After scoring, two filters run before the final top-k cut:
-
-**Diversity guard:** If 10 URLs share the same path prefix (e.g. all under `/documentation/geolocation/`), cap that prefix at 3. Prevents one API's docs from filling all 10 slots.
-
-**Element coverage:** After taking the top 10, check if every element (E1–E6) has at least one URL representing it. If E5 has no URL in the top 10, append the highest-scoring URL that matches E5 (even if score is below top-10 threshold).
+Spec context was tried in the relevance agent (commits `c1c45b2` to `0aef592`) and made results worse: agent became too strict, penalised correct Fleet Engine pages, dropped 7 references to score 0.0. Reverted. See `trace/EXPERIMENTS.md` for the full failure analysis.
 
 ---
 
-## Final Output (Top 10 URLs)
+## Post-Processing — Diversity + Two-Tier Element Coverage
+
+After Stage 6, two filters run before the final top-k cut:
+
+### Diversity guard
+
+Within each tied-score tier (e.g. all URLs at 1.0), bucket by first 4 path segments. Cap each bucket at 3. If 10 URLs share `/maps/documentation/javascript/`, keep 3, push 7 to the bottom of the tier.
+
+URLs with strictly higher scores are never displaced — only ties get reordered. Stops one feature area from filling all 10 slots when many URLs tie.
+
+### Two-tier element coverage (NEW two-tier behaviour)
+
+After top-k cut, check if every element (E1–E7) has at least one URL representing it.
+
+- **Pass 1** (floor `--coverage-score-floor`, default 0.5): for each uncovered element, append the highest-scoring URL above 0.5 that matches it.
+- **Pass 2** (floor `--coverage-score-floor-secondary`, default 0.25): for any element still uncovered, relax to 0.25 floor.
+
+**Why two tiers:** Niche / vertical surfaces routinely score 0.25–0.50 when their pages don't have body text yet (bot-blocked hosts, missed by harvester). The secondary pass surfaces them as covering URLs without polluting the headline list with weak-tier matches. Pass 1 stays strict.
+
+Output may slightly exceed top-k.
+
+---
+
+## Run13 Final Output (Top 10 — `07_final.json`)
 
 ```
-1.00  E2,E3,E4      developers.google.com/maps/documentation/geolocation/overview
-1.00  E2,E3,E4      developers.google.com/maps/documentation/geolocation/requests-geolocation
-0.95  E2,E3,E6      developers.google.com/maps/documentation/android-sdk/examples/my-location
-0.95  E2,E3,E4,E5,E6 developers.google.com/maps/documentation/mobility/driver-sdk
-0.95  E1,E2,E3,E5,E6 developers.google.com/maps/solutions/product-locator/best-practices
-0.90  E3,E4,E5      developers.google.com/maps/documentation/mobility/driver-sdk/on-demand
-0.90  E1,E2,E3,E5,E6 developers.google.com/maps/solutions/store-locator/best-practices
-0.85  E1,E2,E3,E5,E6 developers.google.com/codelabs/maps-platform/full-stack-store-locator
-0.80  E2            developers.google.com/maps/documentation/android-sdk/current-place-tutorial
-0.80  E2,E6         codelabs.developers.google.com/codelabs/maps-platform/navigation-sdk-101-android
+0.95  E2,E3,E6,E7      developers.google.com/maps/documentation/navigation/android-sdk/route
+0.95  E1,E2,E4,E6,E7   cloud.google.com/customers/rapido-maps
+0.95  E2-E7            developers.google.com/maps/documentation/mobility/driver-sdk           ← REF
+0.90  E2,E3            codelabs.developers.google.com/codelabs/maps-platform/navigation-sdk-101-android
+0.90  E1,E2,E3,E4      developers.google.com/maps/documentation/navigation/android-sdk/faq
+0.90  E2-E7            developers.google.com/maps/documentation/mobility/driver-sdk/navigation ← REF
+0.90  E2,E6,E7         cloud.google.com/customers/dominos-maps
+0.85  E2-E7            mapsplatform.google.com/maps-products/navigation-sdk/
+0.85  E1,E3,E4         mapsplatform.google.com/solutions/transportation-and-logistics/
+0.85  E2-E7            developers.google.com/maps/documentation/mobility/driver-sdk/on-demand ← REF
 ```
+
+3 reference URLs in top 10 (D9, D12, D13). Element coverage is satisfied: every E1–E7 has at least one URL mapping to it.
 
 ---
 
 ## How the Patent Description Helps
 
-### Quick answer
-
-The description is used to write **better search queries**. It is **not** used in the relevance scoring stage.
-
-It feeds into three stages: **Element Extraction → Sub-Product Probe → Query Rewriting**. All three happen before any URL is fetched or scored. The description never touches the scoring agent.
-
----
-
-### The problem the description solves
-
-The claim text alone is written in patent jargon. It says things like:
-
-> *"a remote dispatch terminal receives an address and event data and correlates the address to location-based data"*
-
-No Google documentation page uses those words. SerpApi will return nothing useful if you search `"remote dispatch terminal correlates address location-based data"`.
-
-The patent description explains the same invention in plain English, with real-world context:
-
-> *"The invention relates to a vehicle dispatch system. A central dispatcher station receives a pickup request including a street address. The dispatcher transmits the address to a driver's mobile device. The driver's device displays the destination on a turn-by-turn navigation map."*
-
-Now the LLM knows: this is a **driver dispatch system**. It can write queries like `"Fleet Engine driver location"` or `"Navigation SDK dispatch address"` — queries that actually hit the right documentation pages.
-
----
-
-### Step 1 — Select relevant paragraphs from the description
-
-A patent description can be 100+ paragraphs long. Most of it is boilerplate, prior-art discussion, and figure captions. Only a few paragraphs actually explain the technical implementation relevant to the specific claim.
-
-The tool picks the top 10 paragraphs using **keyword overlap**:
-
-1. Extract meaningful words from the claim text (strip stopwords like "a", "the", "comprising", "wherein").
-   - Example from Claim 1: `{dispatch, terminal, address, event, location, mobile, display, map, transmit, store, criteria}`
-2. Score every description paragraph by how many of those words it contains.
-3. Keep the top 10 highest-scoring paragraphs, in their original document order.
-
-**What gets selected for US7629884B2 Claim 1:**
-Paragraphs describing the dispatch station architecture, the driver mobile device GPS flow, how the address is transmitted to the driver, and how the navigation display updates. Paragraphs about figure numbering, prior art citations, and legal boilerplate are dropped.
-
----
-
-### Step 2 — Inject those paragraphs into Stage 2 (Element Extractor)
-
-The element extractor LLM call receives this block appended to its prompt:
-
-```
-Additional context from the patent description (use technical terms and
-implementation detail below to produce more precise element labels and keywords —
-do not copy text verbatim; let it inform vocabulary choices):
-"""
-[selected description paragraphs here]
-"""
-```
-
-**Effect on E1 (dispatch terminal element):**
-
-| | Without description | With description |
-|-|--------------------|--------------------|
-| Label | "Receives an address and correlates to location data" | "A remote dispatch terminal receives an address and event data and correlates the address to location-based data in a database" |
-| Keywords | `["address lookup", "location data", "event data"]` | `["dispatch terminal", "address lookup", "event data", "database correlation", "location-based data"]` |
-
-The label and keywords now include **"dispatch terminal"** — a phrase the LLM pulled from the description's context, not from the claim's abstract language. That term will directly seed better queries in Stage 4.
-
----
-
-### Step 3 — Inject into Stage 3 (Sub-Product Probe)
-
-The sub-product LLM call also receives the description. Its injected block says:
-
-```
-Patent description context (key technical domain vocabulary — use this to
-identify the claim's use-case and map it to the right sub-products; niche
-surfaces like fleet management, route optimisation, or dispatch APIs should
-be preferred when the spec language matches them, even if they are not the
-most prominent entries in the catalogue evidence):
-"""
-[selected description paragraphs here]
-"""
-```
-
-**Effect:** Without description, the LLM sees a claim about "terminals exchanging location data" and picks the most popular APIs: Geocoding API, Maps JavaScript API, Geolocation API. With description, it sees the words "driver", "dispatch", "vehicle", "fleet" and knows to look for Fleet Engine / Mobility SDK — even if those are not the most prominent entries on the `mapsplatform.google.com/maps-products/` catalogue page.
-
----
-
-### Step 4 — Inject into Stage 4 (Query Rewriter)
-
-The query rewriter also receives the description. Its injected block says:
-
-```
-Relevant patent description context (technical implementation detail behind
-the claim — use this to pick product vocabulary matching what vendors actually
-call these features; e.g. spec says "ranking by predicted engagement" when
-claim says "ordering items by probability measure"):
-"""
-[selected description paragraphs here]
-"""
-```
-
-**Concrete before/after for E1 (dispatch terminal + address lookup):**
-
-| | Without description | With description |
-|-|--------------------|--------------------|
-| Query 1 | `"Maps JavaScript API address lookup"` | `"Fleet Engine driver dispatch address"` |
-| Query 2 | `"Geocoding API event data"` | `"Geocoding API dispatch location lookup"` |
-| Query 3 | `"location data correlation"` | `"Navigation SDK dispatch address display"` |
-| Query 4 | `"Maps SDK address marker"` | `"Routes API geocode dispatch address"` |
-
-Without description, queries are generic and could match any location API. With description, queries target the dispatch/fleet vocabulary that Fleet Engine documentation actually uses.
-
----
-
-### What the description does NOT do
-
-**It is NOT used in Stage 7 (Relevance Scoring).**
-
-This was tried (runs 8–9) and made results worse: the relevance agent, given the spec context, became too strict. It penalised correct Fleet Engine pages ("dispatch terminals ≠ fleet management API" — wrong!) and boosted wrong ones. Without page body text for fleet pages, the agent couldn't distinguish "correct domain, different vocabulary" from "wrong domain, shared vocabulary".
-
-Result: Fleet Engine pages dropped from score 0.50 → 0.25, 7 reference URLs got scored 0.0, pool recall ceiling dropped from 100% to 46%.
-
-The description was removed from the relevance agent and has not been re-added.
-
----
-
-### Summary table
+The description feeds **three** stages, all upstream of any URL retrieval:
 
 | Stage | Uses description? | What it changes |
 |-------|:-----------------:|-----------------|
 | Domain discovery | No | N/A |
-| **Element extraction** | **Yes** | Better element labels + keywords (fleet/dispatch vocabulary) |
-| **Sub-product probe** | **Yes** | Prefers niche APIs (Fleet Engine) over popular ones (Maps JS) |
-| **Query rewriting** | **Yes** | Fleet-specific queries instead of generic location queries |
-| SerpApi search | No | Runs whatever queries Stage 4 produced |
-| Page fetch | No | Just fetches URLs |
-| **Relevance scoring** | **No** | Tried — made results worse. Reverted. |
+| Element extraction (Stage 2) | **Yes** | Better element labels + keywords (fleet/dispatch vocabulary) |
+| Use-case classification (Stage 2a) | **Yes** | More accurate use-case label + anchors |
+| Sub-product probe (Stage 2b) | **Yes** | Prefers niche surfaces (Fleet Engine) over popular ones (Maps JS) |
+| Query rewriting (Stage 3) | **Yes** | Concrete dispatch/driver terms instead of patent jargon |
+| SerpApi search | No | Runs whatever Stage 3 produced |
+| Page fetch | No | Just HTTP |
+| Relevance scoring (Stage 6) | **No** | Tried — made results worse. Reverted. |
+
+### Paragraph selection
+
+Patent descriptions can be 100+ paragraphs of boilerplate, prior art, figure captions. Only a few paragraphs explain the technical implementation relevant to the specific claim.
+
+The tool picks the **top 10 paragraphs by keyword overlap**:
+1. Extract meaningful words from claim text (strip stopwords like "a", "the", "comprising", "wherein").
+2. Score every description paragraph by how many of those words it contains.
+3. Keep the top 10, in original document order.
+
+For Claim 1 of US7629884B2: paragraphs describing dispatch station architecture, driver mobile GPS flow, address transmission, navigation display update. Drops figure-numbering boilerplate.
+
+### Concrete before/after
+
+| Stage | Without description | With description |
+|-------|--------------------|--------------------|
+| E1 keywords | `["address lookup", "location data", "event data"]` | `["dispatch terminal", "address lookup", "event data", "database correlation", "location-based data"]` |
+| E1 query 1 | `"Maps JavaScript API address lookup"` | `"Google Maps Platform Route Optimization API dispatch address lookup"` |
+| E1 query 2 | `"Geocoding API event data"` | `"Route Optimization API event data database correlation"` |
+| Sub-product top pick | Geocoding API | Route Optimization API |
 
 ---
 
-## Known Limitation — The Fleet Engine Problem
+## Why So Many Stages?
 
-The 13 "ground truth" reference URLs for this patent are all Fleet Engine and Mobility SDK pages under `developers.google.com/maps/documentation/mobility/`.
+Each active stage exists because a previous run revealed a specific failure. Read `trace/EXPERIMENTS.md` for the run-by-run history.
 
-Fleet Engine rarely appears in the sub-product list because:
-1. Generic probes (`"Google Maps Platform products list"`) surface well-known APIs (Maps JS, Geocoding, Navigation SDK).
-2. Fleet Engine is niche — it only appears in fleet-specific searches.
-3. But fleet-specific searches require Fleet Engine to already be in the sub-product list.
-4. Circular dependency: need Fleet Engine to find Fleet Engine.
-
-**Current result:** Fleet Engine does appear in the scored pool (score 0.95) because some queries accidentally retrieve it — but it doesn't get into the final top 10 because Geolocation API pages score 1.0 and fill the slots first.
-
-**Fix being explored:** A second sub-product probe pass that explicitly asks *"are there niche/vertical-specific surfaces missing from this list?"* using the claim + description as context.
+| Stage | Default | Failure it fixes / status |
+|-------|:-------:|---------------------------|
+| 2a Use-case classifier | ON | Downstream stages re-derived domain independently → divergence. Provides anchor tokens for rewriter rule. |
+| 3 Anchor rule + per-surface cap | ON | Orphan jargon queries returned zero hits; queries clustered on most popular surface. |
+| 4b Path-neighborhood expansion | **OFF** | Theoretical niche-sub-tree retrieval. Overlapped with index harvest, leaked off-topic. Code retained, opt-in via `--path-expansion`. |
+| 5 Adaptive Playwright | ON | Bot-blocked hosts returned empty bodies → 0 evidence for scorer. |
+| 5b Index-page link harvest | ON | Catalogue index pages list 50+ leaves inline that SerpApi never returned. **Single biggest win this iteration. Zero SerpApi cost.** |
+| 2b Sub-product two-step | **OFF** | Theoretical popular-API debias. No measurable top-k gain (5/13 either way). Code retained, opt-in via `--subproduct-two-step`. |
+| Diversity guard | ON | One feature area drowned the top-k when many URLs tied. |
+| Two-tier coverage | ON | Niche surfaces with weak titles needed 0.25-floor fallback to be representable. |
 
 ---
 
-## Complete Flow Diagram
+## Search Budget (default config, run13-like)
+
+```
+Domain probes (Stage 1):       5 SerpApi calls
+Sub-product probes (Stage 2b): ~12 SerpApi calls + 8 page fetches
+Main search (Stage 4):         84 SerpApi calls
+Page fetch pass 1:             465 HTTP fetches
+Page fetch pass 2 (harvested): 200 HTTP fetches
+─────────────────────────────────────────────
+Total SerpApi calls:           ~101
+Total HTTP page fetches:       ~673
+LLM calls:
+  Domain classify:               1
+  Element extract:               1
+  Use-case classify:             1
+  Sub-product filter:            1   (single-step default)
+  Query rewrite:                 1
+  Relevance score:              ~9 batches
+  ─────────────────────────────────
+  Total LLM calls:             ~14
+```
+
+If both opt-in mechanisms enabled (`--path-expansion --subproduct-two-step`): +1 LLM call, +12 SerpApi calls per run.
+
+Disk cache (`./.claim_url_cache/`) makes re-runs near-zero-cost: every SerpApi call, every LLM completion at temperature 0.0, every page body keyed by sha256(input) → JSON file.
+
+---
+
+## Complete Flow Diagram (default config)
 
 ```
 INPUT
@@ -446,49 +566,68 @@ INPUT
        ▼
 [1] DOMAIN DISCOVERY
     5 SerpApi probes → LLM classifies domains
-    Result: developers.google.com, mapsplatform.google.com, support.google.com
+    → developers.google.com, mapsplatform.google.com, cloud.google.com
        │
        ▼
 [2] CLAIM ELEMENT EXTRACTION
-    LLM reads claim + description → 6 elements (E1–E6)
-    Description helps: "dispatch", "driver", "fleet" vocabulary added
+    LLM reads claim + selected description paragraphs → 7 elements (E1–E7)
        │
        ▼
-[3] SUB-PRODUCT PROBE
-    SerpApi catalogue probes → fetch mapsplatform.google.com/maps-products/
-    LLM reads page body → picks 8 relevant APIs
-    Description helps: prefers fleet/dispatch surfaces
+[2a] USE-CASE CLASSIFICATION
+    LLM → "Mobile dispatch mapping"
+    Anchors: dispatch, GPS receiver, map display, ...
        │
        ▼
-[4] QUERY REWRITING
+[2b] SUB-PRODUCT PROBE (single-step default)
+    SerpApi catalogue probes → fetch top 8 catalogue pages (8000 chars)
+    Single LLM filter call: claim + use-case anchors → ranks surfaces
+    → 8 surfaces: Route Optimization, Navigation SDK Android/iOS, ...
+    (Opt-in `--subproduct-two-step` splits into enumerate + filter)
+       │
+       ▼
+[3] QUERY REWRITING
     LLM: patent jargon → product vocabulary
-    4 queries × 6 elements = 24 queries
-    Description helps: uses concrete dispatch/driver terms
+    Anchor rule: every query has surface OR anchor OR product brand
+    Per-surface cap: ceil(28/8) = 4
+    → 4 queries × 7 elements = 28 queries
        │
        ▼
-[5] SERPAPI SEARCH
-    24 queries × 3 domains = 72 API calls
-    Each returns up to 10 URLs
-    Result: 646 raw URLs
+[4] SERPAPI SEARCH
+    28 queries × 3 domains = 84 API calls → 718 raw hits
+    (Opt-in `--path-expansion` adds up to 12 follow-up SerpApi calls)
        │
        ▼
-[6] PAGE FETCH
-    HTTP GET each unique URL (434 unique)
-    Strip HTML → first 4,000 chars of text
-    Result: 263 with body, 171 empty (support.google.com blocked)
+[5] PAGE FETCH (pass 1)
+    Parallel HTTP / Playwright; adaptive fallback for bot-blocked hosts
+    → 465 unique URLs, ~300 with body, raw HTML kept in memory
        │
        ▼
-[7] RELEVANCE SCORING
-    LLM scores each URL 0.0–1.0
-    Uses: claim text + elements + page body
-    Result: 226 URLs scored above 0.0
+[5b] INDEX-PAGE LINK HARVEST
+    Parse cached HTML on index pages → enqueue same-domain children
+    Two-pass: index → sub-index → leaves
+    Seeded with sub-product catalogue pages
+    → +200 candidate URLs (Fleet Engine essentials, trip-details, ...)
        │
        ▼
-[POST] DIVERSITY + COVERAGE
-    Cap per path-prefix → prevent one API dominating top-10
-    Append missing element coverage if needed
+[5c] PAGE FETCH (pass 2)
+    Fetch bodies for the 200 newly-harvested URLs
        │
        ▼
-OUTPUT
-    Top 10 URLs with scores + which elements each covers
+[6] RELEVANCE SCORING
+    LLM scores each URL 0.0–1.0 (batches of 35, 4 in parallel)
+    Uses: claim text + 7 elements + page body (description NOT injected)
+    Legal/TOS pages forced to 0.0
+    → 300 scored above 0.0; 112 above 0.5; 46 above 0.75
+       │
+       ▼
+[POST] DIVERSITY GUARD + TWO-TIER COVERAGE
+    Within tied-score tiers, cap per path-prefix at 3
+    Pass 1 (floor 0.5): cover any missing element
+    Pass 2 (floor 0.25): relax for niche surfaces
+       │
+       ▼
+OUTPUT (top 10)
+    Run13 result: 5/13 reference URLs hit (D2, D7, D9, D12, D13)
+    Pool recall ceiling: 13/13 (100%) across the 300 scored
+    Bottleneck: scorer ranking, not retrieval
 ```

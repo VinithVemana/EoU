@@ -20,6 +20,7 @@ from claim_url.llm import LLMClient
 from claim_url.models import (
     ClaimElement,
     DomainCandidate,
+    DomainSpec,
     FinderResult,
     RawHit,
     ScoredURL,
@@ -38,6 +39,7 @@ __all__ = [
     "DEFAULT_GOOGLE_MODEL",
     "DEFAULT_OPENAI_MODEL",
     "DomainCandidate",
+    "DomainSpec",
     "FinderResult",
     "LLMClient",
     "LLMProvider",

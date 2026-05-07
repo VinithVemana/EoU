@@ -13,6 +13,11 @@ Usage examples (always invoked via the venv pinned in the global
     python -m claim_url --claim-file claim.txt --suggest-products 5  # cap suggestion list
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
         --domains "support.google.com,tv.youtube.com"
+    # Multi-tenant hosts (github.com, medium.com, youtube.com, …) require a
+    # vendor path; otherwise site:github.com matches every repo on the
+    # platform.
+    python -m claim_url --product "Netflix Zuul" --claim-file claim.txt \\
+        --domains "github.com/Netflix,netflixtechblog.com"
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
         --max-domains 3 --per-domain 3 --top-k 5                 # smoke test
     python -m claim_url --product "YouTube TV" --claim-file claim.txt \\
@@ -77,6 +82,7 @@ from claim_url.config import (
     DEFAULT_GOOGLE_MODEL,
     DEFAULT_LOG_FILE,
     DEFAULT_OPENAI_MODEL,
+    ENV_FIRECRAWL_KEY,
     ENV_PCS_API_KEY,
     ENV_PCS_BASE_URL,
     ENV_PCS_PORT,
@@ -92,7 +98,7 @@ from claim_url.pcs_api import fetch_claim_from_patent, fetch_patent_claim_and_de
 from claim_url.serp import SerpApiClient
 from claim_url.spec_context import SpecContext, build_spec_context
 from claim_url.trace import TraceWriter
-from claim_url.utils import dedupe_keep_order, normalize_domain
+from claim_url.utils import dedupe_keep_order, parse_domain_spec
 
 
 LOG = logging.getLogger("claim-url-finder")
@@ -270,7 +276,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--domains", default=None,
         help=(
             "Optional comma-separated domain override, e.g. "
-            "'support.google.com,tv.youtube.com'. "
+            "'support.google.com,tv.youtube.com'. Multi-tenant hosts "
+            "(github.com, medium.com, youtube.com, …) require a vendor "
+            "path: 'github.com/Netflix,netflixtechblog.com'. "
             "If provided, Agent 1 domain discovery is skipped."
         ),
     )
@@ -325,6 +333,88 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Cap on sub-product surfaces returned by the probe. Default: 8.",
     )
     parser.add_argument(
+        "--subproduct-two-step", action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Split the sub-product LLM call into two stages: Step A enumerates "
+            "every visible sub-product from the catalogue evidence (no relevance "
+            "filter), Step B ranks the enumeration against the claim. In theory "
+            "reduces popular-API bias; in practice on the test patent it doubled "
+            "LLM cost without measurable top-k gain (run10 single-step = run13 "
+            "two-step = 5/13). Default: off — single combined call. Flip on with "
+            "--subproduct-two-step to A/B."
+        ),
+    )
+
+    # ------------------------------------------------------------------ #
+    # Recall-expansion flags (use-case classifier + path neighborhood +
+    # index-page link harvest).
+    # ------------------------------------------------------------------ #
+    parser.add_argument(
+        "--use-case-classification", action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Run a single LLM call after element extraction to classify the "
+            "claim's technical use-case (e.g. 'vehicle dispatch', 'on-device "
+            "autocomplete') and emit a small set of vocabulary anchors. The "
+            "result is shared with the sub-product probe and the rewriter so "
+            "every downstream stage targets the same use-case rather than "
+            "re-deriving it. Default: on."
+        ),
+    )
+    parser.add_argument(
+        "--path-expansion", action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "After the initial SerpApi search, fan out follow-up queries "
+            "under path prefixes that already produced 2+ hits. Theoretical "
+            "niche-sub-tree retrieval boost; in practice overlaps with "
+            "--index-link-harvest (free) and run13 expansion hits leaked into "
+            "off-topic sub-trees. Default: off. Flip on with --path-expansion "
+            "to A/B. Cost when on: up to --path-expansion-max-followups extra "
+            "SerpApi calls per run."
+        ),
+    )
+    parser.add_argument(
+        "--path-expansion-max-followups", type=int, default=12,
+        help=(
+            "Maximum follow-up SerpApi calls issued by the path-neighborhood "
+            "expander. Default: 12."
+        ),
+    )
+    parser.add_argument(
+        "--path-expansion-min-hits", type=int, default=2,
+        help=(
+            "A path-prefix bucket must contain at least this many initial "
+            "hits to be expanded. Default: 2."
+        ),
+    )
+    parser.add_argument(
+        "--path-expansion-prefix-segments", type=int, default=3,
+        help=(
+            "Path segments used to define a bucket for the path-neighborhood "
+            "expander. Default: 3."
+        ),
+    )
+    parser.add_argument(
+        "--index-link-harvest", action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "After page fetch, parse the raw HTML of likely index/overview "
+            "pages and enqueue inline same-domain anchors as additional "
+            "candidate URLs (no extra SerpApi cost; reuses the fetch cache). "
+            "Catalogue / overview pages list dozens of sub-pages inline that "
+            "SerpApi rarely surfaces individually. Default: on."
+        ),
+    )
+    parser.add_argument(
+        "--index-link-harvest-max-total", type=int, default=200,
+        help=(
+            "Cap on URLs harvested from index pages per run. Default: 200."
+        ),
+    )
+
+    parser.add_argument(
         "--diversity-prefix-segments", type=int, default=4,
         help=(
             "URL path segments used to bucket results for the tied-score "
@@ -351,8 +441,32 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--coverage-score-floor", type=float, default=0.5,
         help=(
-            "Minimum score a candidate URL must reach to qualify for the "
-            "element-coverage guarantee. Default: 0.5."
+            "Primary minimum score a candidate URL must reach to qualify "
+            "for the element-coverage guarantee. Default: 0.5."
+        ),
+    )
+    parser.add_argument(
+        "--coverage-score-floor-secondary", type=float, default=0.25,
+        help=(
+            "Secondary minimum score used in the coverage-guard fallback "
+            "pass: any element still uncovered after the primary pass is "
+            "covered using URLs at or above this lower floor. Niche / "
+            "vertical surfaces that score in the 0.25–0.50 band routinely "
+            "qualify here. Set to 0.0 to disable the fallback pass. "
+            "Default: 0.25."
+        ),
+    )
+
+    parser.add_argument(
+        "--fetch-adaptive-playwright", action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "When the requests-based fetcher accumulates a streak of empty "
+            "bodies for a given host (e.g. support.google.com bot-blocked), "
+            "automatically promote that host's remaining URLs to Playwright "
+            "Chromium for the rest of the run. Requires Playwright to be "
+            "installed. No-op when --playwright-fetch is already on. "
+            "Default: on."
         ),
     )
 
@@ -511,13 +625,27 @@ def _parse_url_pattern_list(value: Optional[str]) -> list[re.Pattern[str]]:
 
 
 def _parse_domain_override(value: Optional[str]) -> Optional[list[str]]:
+    """Parse --domains. Accepts ``host`` and ``host/path`` (multi-tenant hosts).
+
+    Returns the list of canonical strings ready to feed to ``ClaimURLFinder``,
+    e.g. ``["github.com/Netflix", "netflixtechblog.com"]``. Order preserved,
+    duplicates removed.
+    """
     if not value:
         return None
-    domains = [d for d in (normalize_domain(p) for p in value.split(",")) if d]
-    domains = dedupe_keep_order(domains)
-    if not domains:
+    out: list[str] = []
+    for part in value.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        spec = parse_domain_spec(part)
+        if spec is None:
+            continue
+        out.append(spec.site_query())
+    out = dedupe_keep_order(out)
+    if not out:
         raise ValueError("--domains was provided but no valid domains were found")
-    return domains
+    return out
 
 
 def _print_text_result(result: FinderResult, *, stream=sys.stdout) -> None:
@@ -528,7 +656,7 @@ def _print_text_result(result: FinderResult, *, stream=sys.stdout) -> None:
 
     out("\n=== Official domains identified ===\n")
     for domain in result.domains:
-        out(f"  [{domain.confidence:.2f}] {domain.domain}\n")
+        out(f"  [{domain.confidence:.2f}] {domain.display()}\n")
         if domain.rationale:
             out(f"       {domain.rationale}\n")
         for source_url in domain.source_urls[:3]:
@@ -684,12 +812,18 @@ def main(argv: Optional[list[str]] = None) -> int:
 
         page_fetcher: Optional[PageFetcher] = None
         if args.fetch_pages or args.playwright_fetch:
+            import os
+            firecrawl_key = os.environ.get(ENV_FIRECRAWL_KEY, "").strip() or None
+            if firecrawl_key:
+                LOG.info("Firecrawl fallback enabled (FIRECRAWL_API_KEY found)")
             page_fetcher = PageFetcher(
                 max_chars=args.fetch_max_chars,
                 timeout=args.fetch_timeout,
                 max_workers=args.fetch_workers,
                 disk_cache=fetch_cache,
                 use_playwright=args.playwright_fetch,
+                adaptive_playwright_fallback=args.fetch_adaptive_playwright,
+                firecrawl_api_key=firecrawl_key,
             )
 
         spec_context: Optional[SpecContext] = None
@@ -730,10 +864,19 @@ def main(argv: Optional[list[str]] = None) -> int:
             trace_writer=trace_writer,
             enable_subproduct_probe=args.subproduct_probe,
             max_subproducts=args.max_subproducts,
+            subproduct_two_step_harvest=args.subproduct_two_step,
+            enable_use_case_classification=args.use_case_classification,
+            enable_path_expansion=args.path_expansion,
+            path_expansion_max_followups=args.path_expansion_max_followups,
+            path_expansion_min_hits=args.path_expansion_min_hits,
+            path_expansion_prefix_segments=args.path_expansion_prefix_segments,
+            enable_index_link_harvest=args.index_link_harvest,
+            index_harvest_max_total_links=args.index_link_harvest_max_total,
             diversity_prefix_segments=args.diversity_prefix_segments,
             diversity_per_prefix=args.diversity_per_prefix,
             ensure_element_coverage=args.element_coverage,
             coverage_score_floor=args.coverage_score_floor,
+            coverage_score_floor_secondary=args.coverage_score_floor_secondary,
         )
 
         try:

@@ -13,14 +13,21 @@ platform the claim targets before emitting queries.
 When sub-products are provided (from
 :class:`~claim_url.agents.subproduct.SubProductAgent`), the rewriter must
 distribute queries so every listed surface receives at least one query
-across the full element set. This fixes the "umbrella product" failure
-where queries cluster on the most popular sub-product and starve the rest.
+across the full element set, AND no single surface may dominate more
+than its fair share of the total query budget. This stops queries from
+clustering on the most popular sub-product and starving the rest.
+
+Every emitted query must contain at least one anchor token: a sub-product
+name, a use-case anchor token, the product name, or the vendor brand.
+Orphan jargon queries (e.g. ``"dispatch memory location data"``) match
+zero pages on a narrow ``site:`` filter and waste the SerpApi budget.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import math
 from typing import TYPE_CHECKING, Optional
 
 from claim_url.llm import LLMClient
@@ -29,6 +36,7 @@ from claim_url.utils import dedupe_keep_order, parse_json_object
 
 if TYPE_CHECKING:
     from claim_url.agents.subproduct import SubProduct
+    from claim_url.agents.use_case import UseCase
     from claim_url.spec_context import SpecContext
 
 
@@ -48,9 +56,10 @@ Official domains being searched (with vendor evidence Agent 1 saw):
 
 Sub-product / feature surfaces of {product} that are relevant to this claim
 (pre-identified — distribute your queries so each surface listed here is
-targeted by at least one query somewhere across the full element set):
+targeted by at least one query somewhere across the full element set, AND
+no single surface may dominate more than {per_surface_cap} of your queries):
 {subproducts_json}
-
+{use_case_section}
 Full patent claim (canonical context — read the whole claim before emitting
 queries; element labels alone lose system-level framing):
 \"\"\"
@@ -63,6 +72,8 @@ Claim elements (decomposed limitations):
 Step 1 (internal) — Identify the technical domain / use-case the claim describes
 (authentication, streaming, search ranking, dispatch, replication, payment,
 accessibility, etc.). Use the full claim text — element labels are paraphrases.
+If a pre-classified use-case is supplied above, prefer its anchors over your
+own guess.
 
 Step 2 — For each claim element, generate {n} distinct Google search queries
 that would surface the official documentation page describing that limitation
@@ -86,11 +97,24 @@ Examples of the kind of translation expected (illustrative, not exhaustive):
   ride-sharing, asset tracking, family location-sharing, etc. — the use-case
   determines the right vocabulary)
 
-Rules:
+Anchor rule (mandatory):
+Every query MUST contain at least one of:
+  (a) a sub-product / surface name from the list above, or
+  (b) a use-case anchor token from the list above (when supplied), or
+  (c) the product name "{product}" or its vendor / brand.
+Orphan jargon queries that contain none of these (e.g. literal patent
+terms like "dispatch memory location data") match zero results on
+narrow site: filters and are forbidden.
+
+Per-surface query cap:
+If a sub-product list is given above, no single sub-product may appear in
+more than {per_surface_cap} of the total queries you emit across all
+elements. The union of all queries must still cover every listed surface
+at least once. Spread coverage; do not concentrate.
+
+Other rules:
 - 3-7 tokens per query.
 - Each element's {n} queries must be distinct: different synonyms, angles, or anchors.
-- If a sub-product list is given above, the union of all queries must cover
-  every listed sub-product (each surface gets at least one query).
 - Do NOT include site: operators. Domain restriction is added by the caller.
 - Do NOT wrap the product name in quotes.
 - Anchor with the product or sub-product name when it improves precision.
@@ -120,6 +144,17 @@ claim says "ordering items by probability measure"):
 """
 
 
+_USE_CASE_BLOCK = """\
+
+Pre-classified technical use-case for this claim (treat its anchors as the
+preferred vocabulary tokens — at least one of these tokens, OR a sub-product
+name, OR the product/vendor brand should appear in every emitted query):
+- primary: {use_case}
+- vocabulary anchors: {anchors_json}
+- alternative use-cases worth considering: {alternatives_json}
+"""
+
+
 class QueryRewriteAgent:
     def __init__(self, llm: LLMClient, *, queries_per_element: int = 3) -> None:
         if queries_per_element < 1:
@@ -136,17 +171,24 @@ class QueryRewriteAgent:
         domains: list[DomainCandidate],
         subproducts: Optional[list["SubProduct"]] = None,
         spec_context: Optional[str] = None,
+        use_case: "UseCase | None" = None,
     ) -> list[ClaimElement]:
         """Mutates ``elements`` in place with rewritten queries; returns the same list.
 
         Falls back to the keyword-only query when rewriting fails so the
         pipeline always has *something* to search for each element.
+
+        Parameters
+        ----------
+        use_case: optional pre-classified
+            :class:`~claim_url.agents.use_case.UseCase`. When provided, its
+            anchors are added to the prompt as preferred vocabulary tokens.
         """
         if not elements:
             return elements
 
         domains_payload = [
-            {"domain": d.domain, "rationale": d.rationale, "source_urls": d.source_urls[:3]}
+            {"domain": d.display(), "rationale": d.rationale, "source_urls": d.source_urls[:3]}
             for d in domains
         ]
         elements_payload = [
@@ -157,20 +199,30 @@ class QueryRewriteAgent:
             for sp in (subproducts or [])
         ]
 
+        # Per-surface cap: ceil(total_queries / num_surfaces). Stops a single
+        # surface from absorbing all queries while still allowing concentration
+        # when there are very few surfaces relative to the query budget.
+        total_queries = max(1, len(elements) * self.queries_per_element)
+        num_surfaces = max(1, len(subproducts_payload))
+        per_surface_cap = max(1, math.ceil(total_queries / num_surfaces))
+
         spec_section = (
             _SPEC_CONTEXT_BLOCK.format(spec_context=spec_context.strip())
             if spec_context and spec_context.strip()
             else ""
         )
+        use_case_section = self._format_use_case_section(use_case)
         prompt = PROMPT_TEMPLATE.format(
             product=product,
             claim=claim.strip(),
             domains_json=json.dumps(domains_payload, indent=2),
             subproducts_json=json.dumps(subproducts_payload, indent=2)
                 if subproducts_payload else "[]  (none provided)",
+            use_case_section=use_case_section,
             spec_context_section=spec_section,
             elements_json=json.dumps(elements_payload, indent=2),
             n=self.queries_per_element,
+            per_surface_cap=per_surface_cap,
         )
 
         try:
@@ -221,6 +273,16 @@ class QueryRewriteAgent:
                     element.id,
                 )
         return elements
+
+    @staticmethod
+    def _format_use_case_section(use_case: "UseCase | None") -> str:
+        if not use_case or not bool(use_case):
+            return ""
+        return _USE_CASE_BLOCK.format(
+            use_case=use_case.use_case or "(unspecified)",
+            anchors_json=json.dumps(use_case.anchors),
+            alternatives_json=json.dumps(use_case.alternative_use_cases),
+        )
 
 
 __all__ = ["QueryRewriteAgent"]

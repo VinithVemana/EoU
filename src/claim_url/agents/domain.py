@@ -18,7 +18,13 @@ from claim_url.errors import ClaimURLError
 from claim_url.llm import LLMClient
 from claim_url.models import DomainCandidate, SearchResult
 from claim_url.serp import SerpApiClient
-from claim_url.utils import normalize_domain, parse_json_object
+from claim_url.utils import (
+    MULTI_TENANT_HOSTS,
+    is_multi_tenant_host,
+    normalize_domain,
+    parse_domain_spec,
+    parse_json_object,
+)
 
 
 LOG = logging.getLogger("claim-url-finder")
@@ -49,6 +55,26 @@ Bad examples:
 - Random blogs
 - SEO spam
 - Social media domains unless the product itself is the social-media site
+
+CRITICAL — multi-tenant hosts:
+Some hosts (github.com, gitlab.com, bitbucket.org, medium.com, dev.to,
+youtube.com, vimeo.com, twitter.com, x.com, linkedin.com, facebook.com,
+instagram.com, npmjs.com, pypi.org, hub.docker.com, readthedocs.io,
+substack.com, blogspot.com, wordpress.com, …) are NOT owned by any single
+vendor — every URL belongs to a different tenant. For these, the vendor
+owns only a SUB-PATH (the org/user/handle), never the bare host.
+
+You MUST express such domains as "host/<vendor-path>" — never as the bare
+host. For example:
+  "github.com/Netflix"          (Netflix open-source repos)
+  "github.com/google"           (Google's GitHub org)
+  "youtube.com/@netflix"        (Netflix's YouTube channel)
+  "medium.com/netflix-techblog" (publication path)
+
+Returning the bare host (e.g. "github.com") for a multi-tenant host is
+WRONG — it would match every repository / channel / publication on the
+platform, including unrelated third-party content. If you cannot determine
+the vendor's path on a multi-tenant host, omit that host entirely.
 
 Return valid JSON only.
 """
@@ -81,7 +107,11 @@ Rules:
 - include at most {max_domains} domains
 - prefer high-confidence official domains
 - include support/help/documentation subdomains separately if relevant
-- normalize domains without paths, for example "support.google.com"
+- single-tenant vendor domains: emit without a path, e.g. "support.google.com"
+- multi-tenant hosts (see system prompt list — github.com, gitlab.com,
+  medium.com, youtube.com, linkedin.com, npmjs.com, pypi.org, …) MUST be
+  emitted with the vendor's path attached, e.g. "github.com/Netflix" or
+  "youtube.com/@netflix". Bare multi-tenant hosts will be REJECTED.
 """
 
 
@@ -165,17 +195,34 @@ class DomainIdentificationAgent:
 
     @staticmethod
     def _coerce_candidates(raw_domains: list[Any]) -> list[DomainCandidate]:
-        seen: set[str] = set()
+        seen: set[tuple[str, str]] = set()
         candidates: list[DomainCandidate] = []
 
         for item in raw_domains:
             if not isinstance(item, dict):
                 continue
 
-            domain = normalize_domain(str(item.get("domain") or ""))
-            if not domain or domain in seen:
+            spec = parse_domain_spec(str(item.get("domain") or ""))
+            if spec is None:
                 continue
-            seen.add(domain)
+            host, path_prefix = spec.host, spec.path_prefix
+
+            # Reject bare multi-tenant hosts (github.com, medium.com, …) —
+            # they would match every tenant on the platform. The LLM is
+            # instructed to attach a vendor path; if it didn't, we drop the
+            # entry rather than ship a query that returns third-party noise.
+            if not path_prefix and is_multi_tenant_host(host):
+                LOG.warning(
+                    "Dropping multi-tenant host with no path prefix: %r "
+                    "(LLM must emit e.g. 'github.com/<org>')",
+                    host,
+                )
+                continue
+
+            key = (host, path_prefix)
+            if key in seen:
+                continue
+            seen.add(key)
 
             try:
                 confidence = float(item.get("confidence", 0.0))
@@ -191,10 +238,11 @@ class DomainIdentificationAgent:
 
             candidates.append(
                 DomainCandidate(
-                    domain=domain,
+                    domain=host,
                     confidence=confidence,
                     rationale=str(item.get("rationale") or "").strip(),
                     source_urls=source_urls,
+                    path_prefix=path_prefix,
                 )
             )
         return candidates

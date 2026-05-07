@@ -1,20 +1,32 @@
 """Identify the sub-products / feature surfaces of a product that are
 relevant to a given patent claim.
 
-Generic — no product-specific hardcoding. The agent is **evidence-based**,
-not memory-based:
+Generic — no product-specific hardcoding. The agent is **evidence-based**
+and uses a **two-step harvest** (enumerate then filter):
 
 1. SerpApi probes (parallel) enumerate the actual sub-product catalogue
    advertised on the vendor's official domains — products lists,
    documentation indexes, solutions/services pages, API directories.
-2. The LLM is then asked to pick the claim-relevant entries from that
-   real catalogue, instead of trying to recall the catalogue from
-   training memory.
+2. The highest-authority catalogue / overview pages are fetched and
+   their bodies stripped to plain text.
+3. **Step A (enumerate):** one LLM call that lists *every* sub-product /
+   API / SDK / service it can find in the catalogue evidence + page
+   bodies, with no relevance filtering. This survives popular-API bias:
+   niche surfaces (e.g. Fleet Engine, On-Demand Rides) make the list
+   alongside the obvious ones because the only criterion is "appears in
+   the catalogue".
+4. **Step B (filter):** a second LLM call ranks the enumeration against
+   the claim text and (when available) the pre-classified
+   :class:`~claim_url.agents.use_case.UseCase`. The use-case anchor
+   forces the filter to prefer surfaces that match the claim's domain
+   even when those surfaces are dwarfed by popular APIs in the
+   catalogue evidence.
 
 This fixes the umbrella-product failure where, given just a product name,
-the LLM defaults to the most popular sub-products it remembers and omits
-niche-but-claim-relevant ones (e.g. Google Maps Platform → Geocoding /
-Places, missing Fleet Engine / Mobility / Route Optimization).
+a single combined enumerate-and-filter LLM call defaults to the most
+popular sub-products it remembers and omits niche-but-claim-relevant
+ones (e.g. Google Maps Platform → Geocoding / Places, missing Fleet
+Engine / Mobility / Route Optimization).
 
 Output is consumed by :class:`~claim_url.agents.rewriter.QueryRewriteAgent`
 to (a) bias query vocabulary toward the relevant surfaces and
@@ -33,9 +45,15 @@ from claim_url._progress import progress
 from claim_url.llm import LLMClient
 from claim_url.models import DomainCandidate, SearchResult
 from claim_url.serp import SerpApiClient
-from claim_url.utils import dedupe_keep_order, domain_matches, normalize_domain, parse_json_object
+from claim_url.utils import (
+    dedupe_keep_order,
+    normalize_domain,
+    parse_json_object,
+    url_matches_spec,
+)
 
 if TYPE_CHECKING:
+    from claim_url.agents.use_case import UseCase
     from claim_url.fetch import PageFetcher
 
 
@@ -73,13 +91,96 @@ most prominent entries in the catalogue evidence):
 """
 
 
-SYSTEM_PROMPT = (
-    "You map patent claims to the sub-product / API / feature surfaces of a "
-    "product whose docs would evidence the claim's limitations. Always return "
-    "valid JSON."
+_USE_CASE_BLOCK = """\
+
+Pre-classified technical use-case for this claim (treat as a hard
+preference — surfaces that document this use-case should be ranked above
+surfaces that merely share surface-level vocabulary):
+- primary: {use_case}
+- vocabulary anchors: {anchors_json}
+- alternative use-cases worth considering: {alternatives_json}
+"""
+
+
+# ---------------------------------------------------------------------------
+# Step A — enumerate every sub-product visible in the catalogue evidence.
+# ---------------------------------------------------------------------------
+
+ENUMERATE_SYSTEM_PROMPT = (
+    "You enumerate sub-products / APIs / SDKs / services / modules of a "
+    "product from catalogue evidence. You are an exhaustive lister — "
+    "include EVERY surface visible in the evidence even if it looks niche "
+    "or unrelated. Do NOT filter by topical relevance; that is a separate "
+    "downstream step. Always return valid JSON."
 )
 
-PROMPT_TEMPLATE = """\
+ENUMERATE_PROMPT_TEMPLATE = """\
+Product: {product}
+
+Official domains being searched:
+{domains_json}
+
+SerpApi catalogue evidence (real titles + URLs surfaced by enumeration probes
+on the official domains — this is the actual menu of sub-products, NOT what
+you may recall from training memory):
+{evidence_json}
+
+Catalogue page bodies (stripped text of the highest-authority catalogue /
+overview pages on the official domains — these typically render the full
+product menu inline. Read these carefully and harvest sub-product names from
+them, especially niche entries you might not recall from training):
+{catalogue_pages_json}
+
+Task:
+List EVERY distinct sub-product, API, SDK, service, module, or feature
+surface of {product} that is visible in the catalogue evidence above. Be
+exhaustive — include niche / vertical / fleet / dispatch / industry-specific
+surfaces alongside the popular ones. Do not filter by topical relevance to
+any particular use-case; that filtering happens downstream.
+
+Guidance:
+- Treat the evidence + page bodies as ground truth. Prefer entries that
+  literally appear there.
+- You may add an entry that is not literally in the evidence only when
+  you have very high confidence that it is hosted on one of the listed
+  official domains (e.g. obvious sibling SDKs implied by an Android
+  variant being listed). Mark such entries with `evidenced=false`.
+- Aim for completeness, not brevity. If the catalogue lists 25 surfaces
+  and you can read them, return all 25.
+- Skip generic marketing pages, blog categories, pricing, legal, support,
+  and changelog entries. Only list actual sub-product / API / SDK names.
+
+For each entry provide:
+- name: canonical sub-product / surface name as it appears in vendor docs.
+- vocabulary: 2-6 short tokens that frequently appear in vendor docs for
+  this surface (favour distinctive terms; skip generic words).
+- evidenced: true if this entry literally appeared in the evidence /
+  page bodies; false if you inferred it.
+
+Return JSON only:
+{{
+  "subproducts": [
+    {{
+      "name": "...",
+      "vocabulary": ["...", "..."],
+      "evidenced": true
+    }}
+  ]
+}}
+"""
+
+
+# ---------------------------------------------------------------------------
+# Step B — filter the enumeration to the entries most relevant to the claim.
+# ---------------------------------------------------------------------------
+
+FILTER_SYSTEM_PROMPT = (
+    "You select the sub-products from a pre-enumerated list that are most "
+    "likely to host official documentation evidencing the limitations of a "
+    "patent claim. Always return valid JSON."
+)
+
+FILTER_PROMPT_TEMPLATE = """\
 Product: {product}
 
 Official domains being searched:
@@ -89,7 +190,75 @@ Patent claim (canonical source of truth — read the entire claim, not just keyw
 \"\"\"
 {claim}
 \"\"\"
-{spec_context_section}
+{spec_context_section}{use_case_section}
+Pre-enumerated sub-product surfaces (every surface visible in the catalogue
+for {product}; this is the candidate pool — do NOT add new entries that
+are not in this list):
+{enumeration_json}
+
+Task:
+From the pre-enumerated pool above, pick the {max_subproducts} surfaces most
+likely to host official documentation evidencing the limitations of this
+claim. Output a ranked subset.
+
+Guidance:
+- Read the full claim and infer the technical domain / use-case (dispatch,
+  authentication, streaming, ranking, replication, payment, accessibility,
+  fleet management, …). Use the pre-classified use-case above when present.
+- Prefer surfaces whose typical use-case matches the claim's. Niche /
+  vertical surfaces (fleet management, on-demand rides, asset tracking,
+  driver SDKs, …) matter when they are the closest semantic match — pick
+  them over more popular generic surfaces in that case.
+- A useful test: would the docs page for THIS surface plausibly contain
+  a sentence describing one of the claim's limitations? If yes, include it.
+- For each picked surface, pull its rationale from the claim's vocabulary,
+  not from the surface description alone.
+- If the claim is generic enough that several surfaces qualify equally,
+  prefer the more specific surface over the umbrella one.
+- Return between 1 and {max_subproducts} entries. Order by relevance (most
+  relevant first).
+
+For each entry provide:
+- name: copy verbatim from the pre-enumerated list.
+- vocabulary: re-emit (possibly trimmed) — 2-6 short tokens distinctive
+  to this surface.
+- rationale: one sentence on why this surface matches the claim.
+
+Return JSON only:
+{{
+  "subproducts": [
+    {{
+      "name": "...",
+      "vocabulary": ["...", "..."],
+      "rationale": "..."
+    }}
+  ]
+}}
+"""
+
+
+# ---------------------------------------------------------------------------
+# Single-step prompt — fallback path when the two-step harvest is disabled
+# (kept for backwards compatibility with callers that have not opted in).
+# ---------------------------------------------------------------------------
+
+SINGLE_STEP_SYSTEM_PROMPT = (
+    "You map patent claims to the sub-product / API / feature surfaces of a "
+    "product whose docs would evidence the claim's limitations. Always return "
+    "valid JSON."
+)
+
+SINGLE_STEP_PROMPT_TEMPLATE = """\
+Product: {product}
+
+Official domains being searched:
+{domains_json}
+
+Patent claim (canonical source of truth — read the entire claim, not just keywords):
+\"\"\"
+{claim}
+\"\"\"
+{spec_context_section}{use_case_section}
 SerpApi catalogue evidence (real titles + URLs surfaced by enumeration probes
 on the official domains — this is the actual menu of sub-products, NOT what
 you may recall from training memory):
@@ -159,8 +328,10 @@ class SubProductAgent:
         probe_results_per_query: int = 8,
         max_probe_workers: int = 5,
         max_evidence_items: int = 60,
-        max_catalogue_pages: int = 5,
-        catalogue_body_chars: int = 4000,
+        max_catalogue_pages: int = 8,
+        catalogue_body_chars: int = 8000,
+        two_step_harvest: bool = True,
+        enumeration_cap: int = 60,
     ) -> None:
         if max_subproducts < 1:
             raise ValueError("max_subproducts must be >= 1")
@@ -173,6 +344,13 @@ class SubProductAgent:
         self.max_evidence_items = max(1, int(max_evidence_items))
         self.max_catalogue_pages = max(0, int(max_catalogue_pages))
         self.catalogue_body_chars = max(500, int(catalogue_body_chars))
+        self.two_step_harvest = bool(two_step_harvest)
+        self.enumeration_cap = max(self.max_subproducts, int(enumeration_cap))
+        # Populated by :meth:`discover`. URLs of catalogue / overview / docs
+        # index pages whose bodies were fetched during sub-product harvest.
+        # Exposed so downstream stages (index-link harvester) can reuse them
+        # as additional anchor sources without re-fetching.
+        self.last_catalogue_urls: list[str] = []
 
     def discover(
         self,
@@ -181,36 +359,243 @@ class SubProductAgent:
         claim: str,
         domains: list[DomainCandidate],
         spec_context: Optional[str] = None,
+        use_case: "UseCase | None" = None,
     ) -> list[SubProduct]:
         """Return relevant sub-product surfaces. Empty list on failure.
 
-        Strategy: enumerate the vendor's actual sub-product catalogue via
-        SerpApi probes, then ask the LLM to pick claim-relevant entries from
-        that real catalogue. Falls back to memory-only mode (no evidence) when
-        the SerpApi client was not provided.
+        Strategy:
+        1. Enumerate the vendor's actual sub-product catalogue via SerpApi
+           probes + catalogue page-body harvest.
+        2. When :attr:`two_step_harvest` is on (default), the LLM call is
+           split into two stages:
 
-        When *spec_context* is provided (description paragraphs from the
-        patent), it is injected into the LLM prompt so the model can map
-        the technical domain directly onto the right sub-surfaces even
-        when those surfaces are underrepresented in the catalogue evidence
-        (e.g. spec language "dispatch/fleet/driver" helps the LLM prefer
-        Fleet Engine over generic mapping APIs).
+           - **Step A (enumerate):** list every sub-product visible in the
+             evidence with no relevance filter — niche surfaces survive
+             popular-API bias.
+           - **Step B (filter):** rank the enumeration against the claim and
+             optional :class:`UseCase`.
+
+           When :attr:`two_step_harvest` is off, a single combined call is
+           used (pre-2026-05 behaviour).
+
+        Falls back to memory-only mode (no evidence) when the SerpApi
+        client was not provided.
+
+        Parameters
+        ----------
+        spec_context: optional patent description paragraphs.
+        use_case: optional pre-classified
+            :class:`~claim_url.agents.use_case.UseCase` from
+            :class:`UseCaseAgent` — its anchors steer the filter step
+            toward surfaces that match the claim's technical domain.
         """
         evidence = self._collect_evidence(product, domains, spec_context=spec_context)
         catalogue_pages = self._fetch_catalogue_pages(evidence, domains)
+        self.last_catalogue_urls = [p["url"] for p in catalogue_pages if p.get("url")]
         domains_payload = [
-            {"domain": d.domain, "rationale": d.rationale} for d in domains
+            {"domain": d.display(), "rationale": d.rationale} for d in domains
         ]
         spec_section = (
             _SPEC_CONTEXT_BLOCK.format(spec_context=spec_context.strip())
             if spec_context and spec_context.strip()
             else ""
         )
-        prompt = PROMPT_TEMPLATE.format(
+        use_case_section = self._format_use_case_section(use_case)
+
+        if self.two_step_harvest:
+            enumeration = self._enumerate_step(
+                product=product,
+                domains_payload=domains_payload,
+                evidence=evidence,
+                catalogue_pages=catalogue_pages,
+            )
+            if not enumeration:
+                LOG.info(
+                    "Sub-product enumeration empty; falling back to single-step prompt"
+                )
+                return self._single_step(
+                    product=product,
+                    claim=claim,
+                    domains_payload=domains_payload,
+                    evidence=evidence,
+                    catalogue_pages=catalogue_pages,
+                    spec_section=spec_section,
+                    use_case_section=use_case_section,
+                )
+            return self._filter_step(
+                product=product,
+                claim=claim,
+                domains_payload=domains_payload,
+                enumeration=enumeration,
+                spec_section=spec_section,
+                use_case_section=use_case_section,
+            )
+
+        return self._single_step(
+            product=product,
+            claim=claim,
+            domains_payload=domains_payload,
+            evidence=evidence,
+            catalogue_pages=catalogue_pages,
+            spec_section=spec_section,
+            use_case_section=use_case_section,
+        )
+
+    # ------------------------------------------------------------------ #
+    # Two-step harvest internals
+    # ------------------------------------------------------------------ #
+
+    def _enumerate_step(
+        self,
+        *,
+        product: str,
+        domains_payload: list[dict[str, str]],
+        evidence: list[dict[str, str]],
+        catalogue_pages: list[dict[str, str]],
+    ) -> list[SubProduct]:
+        """Step A — exhaustive enumeration of every visible sub-product."""
+        prompt = ENUMERATE_PROMPT_TEMPLATE.format(
+            product=product,
+            domains_json=json.dumps(domains_payload, indent=2),
+            evidence_json=json.dumps(evidence, indent=2)
+                if evidence else "[]  (no catalogue evidence available)",
+            catalogue_pages_json=json.dumps(catalogue_pages, indent=2)
+                if catalogue_pages else "[]  (no catalogue pages fetched)",
+        )
+
+        try:
+            text = self._llm.complete(
+                system=ENUMERATE_SYSTEM_PROMPT,
+                prompt=prompt,
+                max_tokens=2500,
+                temperature=0.0,
+                json_mode=True,
+            )
+            data = parse_json_object(text)
+        except Exception as exc:
+            LOG.warning("Sub-product enumeration step failed error=%s", exc)
+            return []
+
+        raw = data.get("subproducts")
+        if not isinstance(raw, list):
+            LOG.warning("Sub-product enumeration returned invalid payload")
+            return []
+
+        out: list[SubProduct] = []
+        seen: set[str] = set()
+        for item in raw:
+            sp = self._coerce(item)
+            if sp is None:
+                continue
+            key = sp.name.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(sp)
+            if len(out) >= self.enumeration_cap:
+                break
+        LOG.info(
+            "Sub-product enumeration: %d candidates from catalogue evidence",
+            len(out),
+        )
+        return out
+
+    def _filter_step(
+        self,
+        *,
+        product: str,
+        claim: str,
+        domains_payload: list[dict[str, str]],
+        enumeration: list[SubProduct],
+        spec_section: str,
+        use_case_section: str,
+    ) -> list[SubProduct]:
+        """Step B — rank pre-enumerated surfaces against the claim."""
+        enumeration_payload = [
+            {"name": sp.name, "vocabulary": sp.vocabulary} for sp in enumeration
+        ]
+        prompt = FILTER_PROMPT_TEMPLATE.format(
             product=product,
             domains_json=json.dumps(domains_payload, indent=2),
             claim=claim.strip(),
             spec_context_section=spec_section,
+            use_case_section=use_case_section,
+            enumeration_json=json.dumps(enumeration_payload, indent=2),
+            max_subproducts=self.max_subproducts,
+        )
+
+        try:
+            text = self._llm.complete(
+                system=FILTER_SYSTEM_PROMPT,
+                prompt=prompt,
+                max_tokens=2000,
+                temperature=0.0,
+                json_mode=True,
+            )
+            data = parse_json_object(text)
+        except Exception as exc:
+            LOG.warning("Sub-product filter step failed; using top of enumeration error=%s", exc)
+            return enumeration[: self.max_subproducts]
+
+        raw = data.get("subproducts")
+        if not isinstance(raw, list):
+            LOG.warning("Sub-product filter returned invalid payload; using enumeration head")
+            return enumeration[: self.max_subproducts]
+
+        # Index the enumeration so we can recover vocabulary if the filter
+        # step omits or trims it.
+        by_name = {sp.name.lower(): sp for sp in enumeration}
+
+        picked: list[SubProduct] = []
+        seen: set[str] = set()
+        for item in raw:
+            sp = self._coerce(item)
+            if sp is None:
+                continue
+            key = sp.name.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            # Restore vocabulary from enumeration when the filter step
+            # produced a sparse vocabulary list.
+            if not sp.vocabulary and key in by_name:
+                sp.vocabulary = by_name[key].vocabulary
+            picked.append(sp)
+            if len(picked) >= self.max_subproducts:
+                break
+
+        if not picked:
+            LOG.warning("Sub-product filter step picked nothing; using enumeration head")
+            return enumeration[: self.max_subproducts]
+
+        LOG.info(
+            "Sub-product probe identified %d surfaces (two-step): %s",
+            len(picked),
+            ", ".join(sp.name for sp in picked),
+        )
+        return picked
+
+    # ------------------------------------------------------------------ #
+    # Single-step (legacy) path — kept for fallback + back-compat.
+    # ------------------------------------------------------------------ #
+
+    def _single_step(
+        self,
+        *,
+        product: str,
+        claim: str,
+        domains_payload: list[dict[str, str]],
+        evidence: list[dict[str, str]],
+        catalogue_pages: list[dict[str, str]],
+        spec_section: str,
+        use_case_section: str,
+    ) -> list[SubProduct]:
+        prompt = SINGLE_STEP_PROMPT_TEMPLATE.format(
+            product=product,
+            domains_json=json.dumps(domains_payload, indent=2),
+            claim=claim.strip(),
+            spec_context_section=spec_section,
+            use_case_section=use_case_section,
             evidence_json=json.dumps(evidence, indent=2)
                 if evidence else "[]  (no catalogue evidence available)",
             catalogue_pages_json=json.dumps(catalogue_pages, indent=2)
@@ -220,7 +605,7 @@ class SubProductAgent:
 
         try:
             text = self._llm.complete(
-                system=SYSTEM_PROMPT,
+                system=SINGLE_STEP_SYSTEM_PROMPT,
                 prompt=prompt,
                 max_tokens=2000,
                 temperature=0.0,
@@ -252,11 +637,25 @@ class SubProductAgent:
 
         if subproducts:
             LOG.info(
-                "Sub-product probe identified %d surfaces: %s",
+                "Sub-product probe identified %d surfaces (single-step): %s",
                 len(subproducts),
                 ", ".join(sp.name for sp in subproducts),
             )
         return subproducts
+
+    # ------------------------------------------------------------------ #
+    # Evidence + catalogue helpers
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _format_use_case_section(use_case: "UseCase | None") -> str:
+        if not use_case or not bool(use_case):
+            return ""
+        return _USE_CASE_BLOCK.format(
+            use_case=use_case.use_case or "(unspecified)",
+            anchors_json=json.dumps(use_case.anchors),
+            alternatives_json=json.dumps(use_case.alternative_use_cases),
+        )
 
     def _collect_evidence(
         self,
@@ -278,8 +677,9 @@ class SubProductAgent:
 
         queries: list[str] = [t.format(product=product) for t in SUBPRODUCT_PROBE_QUERIES]
         for d in domains:
+            site_target = d.spec().site_query()
             for tail in SUBPRODUCT_DOMAIN_PROBE_QUERIES:
-                queries.append(f"{tail} site:{d.domain}")
+                queries.append(f"{tail} site:{site_target}")
 
         queries = dedupe_keep_order(queries)
         if not queries:
@@ -351,8 +751,8 @@ class SubProductAgent:
         if self._page_fetcher is None or self.max_catalogue_pages <= 0:
             return []
 
-        official = [normalize_domain(d.domain) or d.domain for d in domains]
-        if not official:
+        specs = [d.spec() for d in domains]
+        if not specs:
             return []
 
         catalogue_keywords = (
@@ -371,9 +771,9 @@ class SubProductAgent:
         scored: list[tuple[float, dict[str, str]]] = []
         for item in evidence:
             url = item.get("url") or ""
-            host = normalize_domain(url) or ""
-            if not host or not any(domain_matches(host, d) for d in official):
+            if not url or not any(url_matches_spec(url, s) for s in specs):
                 continue
+            host = normalize_domain(url) or ""
 
             try:
                 from urllib.parse import urlparse
@@ -393,6 +793,18 @@ class SubProductAgent:
             # with many keyword-matching segments (e.g. /workspace/docs/api/
             # how-tos/overview scored 3.17 while /maps-products/ scored 1.5).
             score = (1.0 + keyword_score) / (1.0 + len(segments))
+            # Developer-doc subdomains (developers.*, docs.*, devdocs.*) host
+            # the canonical sub-product index. Boost them so they survive a
+            # field of homepage / generic /products tied entries — those tend
+            # to be JS-rendered marketing landings whose static HTML carries
+            # only a fraction of the real catalogue.
+            host_lower = host.lower()
+            if (
+                host_lower.startswith("developers.")
+                or host_lower.startswith("docs.")
+                or host_lower.startswith("devdocs.")
+            ):
+                score += 0.25
             if score <= 0.0:
                 continue
             scored.append((score, item))
