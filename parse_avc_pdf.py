@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Parse AVC patent list PDF → CSV rows: (Company, Country, Patent Raw, Patent Cleaned).
+Parse AVC patent list PDF → CSV rows: (Company, Country, Patent Raw, Patent Cleaned, Ambiguous).
 
 Handles patent entry formats observed in the document:
   Parenthetical:    AL (EP 3,975,559)    → country=AL, patent=EP 3,975,559
@@ -15,11 +15,15 @@ Handles patent entry formats observed in the document:
   Expiry note:      US 7,400,681 - Exp. Feb 11, 2026 → strips expiry
 
 Column-major extraction key insight:
-  The PDF uses a 3-column layout where, within one page, different companies can appear
-  at the same y-positions but in different columns. To correctly assign patents to companies
-  we process col-1 (x0 < 200) first, then col-2 (200 ≤ x0 < 400), then col-3 (x0 ≥ 400).
-  Within col-1 company headers precede their patents in reading (y) order, so the state
-  machine correctly assigns every patent.
+  The PDF uses a 3-column layout. Company headers can appear in any column (col-1, col-2,
+  or col-3). Within each page we process col-1 first, then col-2, then col-3; within a
+  column entries are sorted by y (reading order). This guarantees that a company header
+  always precedes the patents below it in the same column.
+
+  State machine uses a pending-patents list: non-left-column patents accumulated while a
+  company name is being collected are held in pending and flushed when the name is
+  finalised (either by a left-column patent or by a new company header appearing after
+  at least one pending patent has been collected).
 
 Usage:
     /Users/vinith_macbook_pro/Desktop/python3/venv314/bin/python parse_avc_pdf.py AVC_data.pdf
@@ -37,7 +41,7 @@ from collections import defaultdict
 
 # ── column thresholds ───────────────────────────────────────────────────────────
 # Standard letter-page PDF (~612 pt wide); col-1 ≈ x0 50–190, col-2 ≈ 205–390, col-3 ≈ 405–560.
-COL1_MAX = 200  # x0 < 200  → col-1 (company headers + left-column patents)
+COL1_MAX = 200  # x0 < 200  → col-1; x0 ≥ 200 → col-2/3. Company headers appear in any col.
 COL2_MAX = 400  # x0 < 400  → col-2; x0 ≥ 400 → col-3
 
 
@@ -105,6 +109,10 @@ def extract_patent(line: str) -> tuple[str, str] | None:
     if m:
         country = m.group(1)
         number = m.group(2).strip()
+        # Require at least one digit — prevents company name fragments like
+        # "NTT DOCOMO, INC." (country=NTT, number="DOCOMO, INC.") from matching.
+        if not re.search(r'\d', number):
+            return None
         return country, f"{country} {number}"
 
     return None
@@ -175,24 +183,26 @@ def extract_with_firecrawl(url: str) -> list[dict]:
 
 # ── parsing ─────────────────────────────────────────────────────────────────────
 
-def parse_entries(entries: list[dict]) -> list[tuple[str, str, str, str]]:
+def parse_entries(entries: list[dict]) -> list[tuple[str, str, str, str, bool]]:
     """
-    Walk entries in column-major order and yield (company, country, patent_raw, patent_clean).
+    Walk entries in column-major order and yield
+    (company, country, patent_raw, patent_clean, ambiguous).
 
     State machine:
-      collecting=True   — accumulating company name (buffer non-empty or initial state)
-      collecting=False  — company name known; right-col patents assigned directly
+      collecting=True   — accumulating company name lines into company_buffer
+      collecting=False  — company name is locked in current_company
 
-    Right-col patents seen while collecting=True go to a pending list that is
-    flushed (assigned to the now-known company) when the first left-col patent
-    triggers a flush. After that, right-col patents are assigned immediately.
+    Company headers may appear in any column (col-1, col-2, or col-3).
+    Non-left-column patents seen while collecting=True go to pending_patents and
+    are flushed when:
+      (a) a left-column patent triggers flush_company(), OR
+      (b) a new company header line appears after ≥1 pending patent has been seen
+          (signals the previous company is complete).
 
-    With column-major extraction, col-2 and col-3 entries are processed after
-    the entire col-1 is done, so collecting is almost always False by that point.
-    The pending list mainly handles the header rows where col-1 holds the company
-    name while col-2/col-3 already have the section's first patents.
+    Ambiguous=True is set on rows where the line looked patent-like (has digits)
+    but did not match any known pattern — flagged rather than silently dropped.
     """
-    rows: list[tuple[str, str, str, str]] = []
+    rows: list[tuple[str, str, str, str, bool]] = []
     current_company: str = ''
     company_buffer: list[str] = []
     pending_patents: list[tuple[str, str]] = []
@@ -204,7 +214,7 @@ def parse_entries(entries: list[dict]) -> list[tuple[str, str, str, str]]:
             current_company = ' '.join(company_buffer)
             company_buffer.clear()
         for country, patent_raw in pending_patents:
-            rows.append((current_company, country, patent_raw, clean_patent(patent_raw)))
+            rows.append((current_company, country, patent_raw, clean_patent(patent_raw), False))
         pending_patents.clear()
         collecting = False
 
@@ -227,17 +237,30 @@ def parse_entries(entries: list[dict]) -> list[tuple[str, str, str, str]]:
             country, patent_raw = patent
             if is_left:
                 flush_company()
-                rows.append((current_company, country, patent_raw, clean_patent(patent_raw)))
+                rows.append((current_company, country, patent_raw, clean_patent(patent_raw), False))
             else:
                 if collecting:
                     pending_patents.append((country, patent_raw))
                 else:
-                    rows.append((current_company, country, patent_raw, clean_patent(patent_raw)))
+                    rows.append((current_company, country, patent_raw, clean_patent(patent_raw), False))
         else:
-            # Non-patent text → company name fragment (expected only in col-1)
-            if is_left:
-                if not collecting:
-                    collecting = True  # starting a new company section
+            # Non-patent text — company name fragment (any column allowed).
+            # If we already have pending patents for the current company, a new header
+            # means that company is complete: flush it before starting the next one.
+            if pending_patents:
+                flush_company()
+            if not collecting:
+                collecting = True
+            # Flag as ambiguous when the line looks like a patent (starts with a
+            # 2–3 uppercase-letter country-code prefix) AND contains ≥3 digits in
+            # the part after the prefix — i.e. it could be a patent number we
+            # failed to parse.  Company name fragments like "NTT DOCOMO, INC." or
+            # "LG Electronics Inc." have 0 digits after the prefix and are treated
+            # as company name lines instead.
+            prefix_m = re.match(r'^([A-Z]{2,3})\s+(.*)', line)
+            if prefix_m and len(re.findall(r'\d', prefix_m.group(2))) >= 3:
+                rows.append((current_company, '?', line, line, True))
+            else:
                 company_buffer.append(line)
 
     flush_company()  # assign any remaining pending at end of document
@@ -269,7 +292,7 @@ def main() -> None:
     rows = parse_entries(entries)
     print(f"  {len(rows)} patent rows parsed", file=sys.stderr)
 
-    header = ['Company', 'Country', 'Patent (Raw)', 'Patent (Cleaned)']
+    header = ['Company', 'Country', 'Patent (Raw)', 'Patent (Cleaned)', 'Ambiguous']
     if args.output:
         with open(args.output, 'w', newline='', encoding='utf-8') as f:
             w = csv.writer(f)
